@@ -24,6 +24,27 @@ def calculate_ssim(real_images, reconstructed_images):
     ssim_scores = [ssim(real, rec, multichannel=True) for real, rec in zip(real_images, reconstructed_images)]
     return np.mean(ssim_scores)
 
+def get_current_visuals(self):
+    """Return current visualizations."""
+    visuals = {}
+    if self.is_using_mask:
+        visuals['real_A'] = self.real_A
+        visuals['fake_B'] = self.fake_B
+        visuals['rec_A'] = self.rec_A
+        visuals['real_B'] = self.real_B
+        visuals['fake_A'] = self.fake_A
+        visuals['rec_B'] = self.rec_B
+    else:
+        visuals['real_A'] = self.real_A
+        visuals['fake_B'] = self.fake_B
+        visuals['rec_A'] = self.rec_A
+        visuals['real_B'] = self.real_B
+        visuals['fake_A'] = self.fake_A
+        visuals['rec_B'] = self.rec_B
+        visuals['mask_A'] = self.foreground_real_A
+        visuals['mask_B'] = self.foreground_real_B
+    return visuals
+
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
@@ -52,7 +73,7 @@ if __name__ == '__main__':
 
             # Calculate and print metrics for each batch
             real_A = data['A']  # Ground truth images (e.g., data['A'])
-            rec_A = model.get_current_visuals()['reconstructed']  # Assuming 'reconstructed' is the key for reconstructed images
+            rec_A = model.get_current_visuals()['rec_A']  # Assuming 'reconstructed' is the key for reconstructed images
 
             mse = calculate_mse(real_A, rec_A)
             psnr = calculate_psnr(real_A, rec_A)
