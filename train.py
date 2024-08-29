@@ -79,6 +79,8 @@ if __name__ == '__main__':
         model.update_learning_rate()                     # update learning rates at the end of every epoch.
 
 import time
+import os
+import torch
 from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
@@ -117,13 +119,12 @@ if __name__ == '__main__':
             model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
 
             # Get predictions and labels for metrics calculation
-            preds = model.get_current_predictions()  # You'll need to implement this method in your model class
+            preds = model.get_current_predictions()  # Ensure this method is implemented in your model class
             labels = data['label'].cpu().numpy()     # Ensure that the labels are in a compatible format
             
             all_preds.extend(preds)
             all_labels.extend(labels)
 
-            # break
             if total_iters % opt.display_freq == 0:   # display images on visdom and save images to a HTML file
                 save_result = total_iters % opt.update_html_freq == 0
                 model.compute_visuals()
@@ -142,7 +143,7 @@ if __name__ == '__main__':
                 model.save_networks(save_suffix)
 
             iter_data_time = time.time()
-        # break
+
         if epoch % opt.save_epoch_freq == 0:              # cache our model every <save_epoch_freq> epochs
             print('saving the model at the end of epoch %d, iters %d' % (epoch, total_iters))
             model.save_networks('latest')
