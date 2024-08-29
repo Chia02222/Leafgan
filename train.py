@@ -28,8 +28,13 @@ def calculate_ssim(real_images, reconstructed_images):
     # Ensure the images are on CPU and detach from the computation graph
     real_images = real_images.detach().cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
     reconstructed_images = reconstructed_images.detach().cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
-    ssim_scores = [ssim(real, rec, multichannel=True) for real, rec in zip(real_images, reconstructed_images)]
+    
+    # Define a valid window size
+    win_size = 11  # This should be an odd number less than or equal to the smallest dimension of your images
+
+    ssim_scores = [ssim(real, rec, multichannel=True, win_size=win_size) for real, rec in zip(real_images, reconstructed_images)]
     return np.mean(ssim_scores)
+
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
