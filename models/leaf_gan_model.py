@@ -51,7 +51,7 @@ class LeafGANModel(BaseModel):
 			opt (Option class)-- stores all the experiment flags; needs to be a subclass of BaseOptions
 		"""
 		BaseModel.__init__(self, opt)
-		self.is_using_mask = opt.dataset_mode == "unaligned_masked"
+                self.is_using_mask = opt.dataset_mode == "unaligned_masked"
 		# specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
 		self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
 		# specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
@@ -71,20 +71,27 @@ class LeafGANModel(BaseModel):
 		# define networks (both Generators and discriminators)
 		# The naming is different from those used in the paper.
 		# Code (vs. paper): G_A (G), G_B (F), D_A (D_Y), D_B (D_X)
-		self.netG_A = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm,not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
-		self.netG_B = networks.define_G(opt.output_nc, opt.input_nc, opt.ngf, opt.netG, opt.norm,not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
+		self.netG_A = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm,
+										not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
+		self.netG_B = networks.define_G(opt.output_nc, opt.input_nc, opt.ngf, opt.netG, opt.norm,
+										not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
 
 		if self.isTrain:  # define discriminators
-			self.netD_A = networks.define_D(opt.output_nc, opt.ndf, opt.netD,opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
-			self.netD_B = networks.define_D(opt.input_nc, opt.ndf, opt.netD,opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
-			if not self.is_using_mask:
+			self.netD_A = networks.define_D(opt.output_nc, opt.ndf, opt.netD,
+											opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+			self.netD_B = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
+											opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+
+                        if not self.is_using_mask:
                                 # define the LFLSeg module
                                 ######################################################
                                 self.segResNet = models.resnet101()
                                 num_ftrs = self.segResNet.fc.in_features
-                                self.segResNet.fc = nn.Linear(num_ftrs, 3)  # Replace final layer with 3 outputs (full leaf, partial leaf, non-leaf)
-                                
-                                load_path = "../LFLSeg/LFLSeg_resnet101.pth"
+                                self.segResNet.fc = nn.Linear(
+                                    num_ftrs, 3
+                                )  # Replace final layer with 3 outputs (full leaf, partial leaf, non-leaf)
+
+                                load_path = "/path/to/LFLSeg_model.pth"
                                 self.segResNet.load_state_dict(torch.load(load_path), strict=True)
                                 self.segResNet.to(self.device)
                                 self.segResNet.eval()
@@ -154,43 +161,62 @@ class LeafGANModel(BaseModel):
 		self.real_A = input['A' if AtoB else 'B'].to(self.device)
 		self.real_B = input['B' if AtoB else 'A'].to(self.device)
 		self.image_paths = input['A_paths' if AtoB else 'B_paths']
-		if self.is_using_mask:
+
+                if self.is_using_mask:
                         self.foreground_real_A = input["mask_A" if AtoB else "mask_B"].to(self.device)
                         self.foreground_real_B = input["mask_B" if AtoB else "mask_A"].to(self.device)
                         with torch.no_grad():
                                 self.background_real_A = torch.absolute(1.0 - self.foreground_real_A)
                                 self.background_real_B = torch.absolute(1.0 - self.foreground_real_B)
 
-# To save the segmented results, use save_image
-				# self.save_image(self.background_real_A, 'saved_img/masked_background_real_A.png')
-				# self.save_image(self.foreground_real_A, 'saved_img/masked_foreground_real_A.png')
-				
-			# For real_A input
-			# Multiply the foreground/background masking of real_A to fake_B to get foreground/background of fake_B
+
 	def forward(self):
-    		"""Run forward pass; called by both functions <optimize_parameters> and <test>."""
-    		# For training
-    		if self.isTrain:
-	    		if not self.is_using_mask:
-	    			self.background_real_A, self.foreground_real_A = self.get_masking(self.real_A, self.opt.threshold)
-	    			self.background_real_B, self.foreground_real_B = self.get_masking(self.real_B, self.opt.threshold)
-	    		self.fake_B = self.netG_A(self.real_A)  # G_A(A)
-	    		self.fore_fake_B = self.foreground_real_A * self.fake_B
-	    		self.back_fake_B = self.background_real_A * self.fake_B
-	    		self.fore_real_B = self.foreground_real_B * self.real_B
-	    		self.back_real_B = self.background_real_B * self.real_B
-	    		self.rec_A = self.netG_B(self.fake_B)   # G_B(G_A(A))
-	    		self.fake_A = self.netG_B(self.real_B)  # G_B(B)
-	    		self.fore_fake_A = self.foreground_real_B * self.fake_A
-	    		self.back_fake_A = self.background_real_B * self.fake_A
-	    		self.fore_real_A = self.foreground_real_A * self.real_A
-	    		self.back_real_A = self.background_real_A * self.real_A
-	    		self.rec_B = self.netG_A(self.fake_A)   # G_A(G_B(B))
-    		else:
-    			self.fake_B = self.netG_A(self.real_A)  # G_A(A)
-    			self.rec_A = self.netG_B(self.fake_B)   # G_B(G_A(A))
-    			self.fake_A = self.netG_B(self.real_B)  # G_B(B)
-    			self.rec_B = self.netG_A(self.fake_A)   # G_A(G_B(B))
+		"""Run forward pass; called by both functions <optimize_parameters> and <test>."""
+		# For training
+		if(self.isTrain):
+                        if not self.is_using_mask:
+                                self.background_real_A, self.foreground_real_A = self.get_masking(
+                                    self.real_A, self.opt.threshold
+                                )
+                                self.background_real_B, self.foreground_real_B = self.get_masking(
+                                    self.real_B, self.opt.threshold
+                                )
+                                # To save the segmented results, use save_image
+                                # self.save_image(self.background_real_A, 'saved_img/masked_background_real_A.png')
+                                # self.save_image(self.foreground_real_A, 'saved_img/masked_foreground_real_A.png')
+
+			# Fore real_A input
+			self.fake_B = self.netG_A(self.real_A)  # G_A(A)
+
+			# multyple the fore/baclground masking of real_A to fake_B to get fore/background of fake_B
+			self.fore_fake_B = self.foreground_real_A * self.fake_B
+			self.back_fake_B = self.background_real_A * self.fake_B
+
+			self.fore_real_B = self.foreground_real_B * self.real_B
+			self.back_real_B = self.background_real_B * self.real_B
+
+			self.rec_A = self.netG_B(self.fake_B)   # G_B(G_A(A))
+
+			# For real_B input
+			self.fake_A = self.netG_B(self.real_B)  # G_B(B)
+
+			# multyple the fore/baclground masking of real_B to fake_A to get fore/background of fake_A
+			self.fore_fake_A = self.foreground_real_B * self.fake_A
+			self.back_fake_A = self.background_real_B * self.fake_A
+
+			self.fore_real_A = self.foreground_real_A * self.real_A
+			self.back_real_A = self.background_real_A * self.real_A
+
+			self.rec_B = self.netG_A(self.fake_A)   # G_A(G_B(B))
+		# For testing, no need to load LFLSeg module
+		else:
+			# Fore real_A input
+			self.fake_B = self.netG_A(self.real_A)  # G_A(A)
+			self.rec_A = self.netG_B(self.fake_B)   # G_B(G_A(A))
+
+			# For real_B input
+			self.fake_A = self.netG_B(self.real_B)  # G_B(B)
+			self.rec_B = self.netG_A(self.fake_A)   # G_A(G_B(B))
 
 	def backward_D_basic(self, netD, real, fake):
 		"""Calculate GAN loss for the discriminator
@@ -274,33 +300,3 @@ class LeafGANModel(BaseModel):
 		self.backward_D_A()      # calculate gradients for D_A
 		self.backward_D_B()      # calculate graidents for D_B
 		self.optimizer_D.step()  # update D_A and D_B's weights
-
-	def calculate_mse(real_images, reconstructed_images):
-    		mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
-    		return mse.item()
-		
-	def calculate_ssim(real_images, reconstructed_images):
-    		real_images = real_images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
-    		reconstructed_images = reconstructed_images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
-    		ssim_scores = [ssim(real, rec, multichannel=True) for real, rec in zip(real_images, reconstructed_images)]
-    		return np.mean(ssim_scores)
-
-	def calculate_pixel_accuracy(real_labels, pred_labels):
-   		correct_pixels = (real_labels == pred_labels).sum().item()
-		total_pixels = real_labels.numel()
-    		accuracy = correct_pixels / total_pixels
-    		return accuracy
-		
-	def calculate_accuracy(self):
-    		# Assuming `self.real_A` and `self.rec_A` are tensors of shape (B, C, H, W)
-    		mse = calculate_mse(self.real_A, self.rec_A)
-    		psnr = calculate_psnr(self.real_A, self.rec_A)
-    		ssim_value = calculate_ssim(self.real_A, self.rec_A)
-    
-    		print(f'MSE: {mse}')
-    		print(f'PSNR: {psnr}')
-    		print(f'SSIM: {ssim_value}')
-
-		# After forward pass, call this method
-		self.calculate_accuracy()
-
