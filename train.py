@@ -1,88 +1,110 @@
 import time
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
+import os
 from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
-
-# Import metrics
 from skimage.metrics import structural_similarity as ssim
 
 def calculate_mse(real_images, reconstructed_images):
-    device = real_images.device  # Get the device of the first tensor
+    device = real_images.device
     real_images = real_images.to(device)
     reconstructed_images = reconstructed_images.to(device)
     mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
     return mse.item()
 
 def calculate_psnr(real_images, reconstructed_images):
-    device = real_images.device  # Get the device of the first tensor
+    device = real_images.device
     real_images = real_images.to(device)
     reconstructed_images = reconstructed_images.to(device)
     mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
     psnr = 10 * torch.log10(1 / mse)
     return psnr.item()
 
+def save_metrics_plot(epoch_mse, epoch_psnr, checkpoint_dir):
+    plt.figure()
+    plt.subplot(2, 1, 1)
+    plt.plot(range(len(epoch_mse)), epoch_mse, label='Average MSE')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average MSE')
+    plt.legend()
+
+    plt.subplot(2, 1, 2)
+    plt.plot(range(len(epoch_psnr)), epoch_psnr, label='Average PSNR')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average PSNR')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(checkpoint_dir, 'metrics_plot.png'))
+    plt.close()
 
 if __name__ == '__main__':
-    opt = TrainOptions().parse()   # get training options
-    dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
-    dataset_size = len(dataset)    # get the number of images in the dataset.
+    opt = TrainOptions().parse()
+    dataset = create_dataset(opt)
+    dataset_size = len(dataset)
     print('The number of training images = %d' % dataset_size)
 
-    model = create_model(opt)      # create a model given opt.model and other options
-    model.setup(opt)               # regular setup: load and print networks; create schedulers
-    visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
-    total_iters = 0                # the total number of training iterations
+    model = create_model(opt)
+    model.setup(opt)
+    visualizer = Visualizer(opt)
+    total_iters = 0
 
-    for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):    # outer loop for different epochs
-        epoch_start_time = time.time()  # timer for entire epoch
-        iter_data_time = time.time()    # timer for data loading per iteration
-        epoch_iter = 0                  # the number of training iterations in current epoch, reset to 0 every epoch
+    mse_list = []
+    psnr_list = []
+    epoch_mse = []
+    epoch_psnr = []
 
-        for i, data in enumerate(dataset):  # inner loop within one epoch
-            iter_start_time = time.time()  # timer for computation per iteration
+    checkpoint_dir = 'checkpoints'
+    os.makedirs(checkpoint_dir, exist_ok=True)
+
+    for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
+        epoch_start_time = time.time()
+        iter_data_time = time.time()
+        epoch_iter = 0
+
+        for i, data in enumerate(dataset):
+            iter_start_time = time.time()
             if total_iters % opt.print_freq == 0:
                 t_data = iter_start_time - iter_data_time
             visualizer.reset()
             total_iters += opt.batch_size
             epoch_iter += opt.batch_size
-            model.set_input(data)         # unpack data from dataset and apply preprocessing
-            model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
+            model.set_input(data)
+            model.optimize_parameters()
 
-            # Calculate and print metrics for each batch
-            real_A = data['A'].to(model.device)  # Move to the same device as the model
-            
-            # Print available keys in visuals to identify the correct key
+            real_A = data['A'].to(model.device)
             visuals = model.get_current_visuals()
-            
-            rec_A_key = 'rec_A'  # Updated to match the provided get_current_visuals method
+
+            rec_A_key = 'rec_A'
             if rec_A_key in visuals:
-                rec_A = visuals[rec_A_key].to(model.device)  # Move to the same device as the model
+                rec_A = visuals[rec_A_key].to(model.device)
 
                 mse = calculate_mse(real_A, rec_A)
                 psnr = calculate_psnr(real_A, rec_A)
-                
+
+                mse_list.append(mse)
+                psnr_list.append(psnr)
+
                 if total_iters % opt.print_freq == 0:
                     print(f'MSE: {mse}')
                     print(f'PSNR: {psnr}')
             else:
                 print(f"Key '{rec_A_key}' not found in visuals")
 
-            # Display and save images
             if total_iters % opt.display_freq == 0:
                 save_result = total_iters % opt.update_html_freq == 0
                 model.compute_visuals()
                 visualizer.display_current_results(model.get_current_visuals(), epoch, save_result)
 
-            # Print losses
             if total_iters % opt.print_freq == 0:
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
                 print(f'Epoch: {epoch}, Iteration: {epoch_iter}, Losses: {losses}, Time per batch: {t_comp:.4f}s, Data loading time: {t_data:.4f}s')
 
-            # Save latest model
             if total_iters % opt.save_latest_freq == 0:
                 print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
                 save_suffix = f'iter_{total_iters}' if opt.save_by_iter else 'latest'
@@ -90,11 +112,27 @@ if __name__ == '__main__':
 
             iter_data_time = time.time()
 
-        # Save model at the end of the epoch
         if epoch % opt.save_epoch_freq == 0:
             print(f'Saving the model at the end of epoch {epoch}, iters {total_iters}')
             model.save_networks('latest')
             model.save_networks(epoch)
 
-        print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
-        model.update_learning_rate()  # update learning rates at the end of every epoch.
+            # Calculate and store average metrics for the epoch
+            avg_mse = np.mean(mse_list)
+            avg_psnr = np.mean(psnr_list)
+            epoch_mse.append(avg_mse)
+            epoch_psnr.append(avg_psnr)
+
+            print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
+            print(f'Epoch {epoch} - Average MSE: {avg_mse}, Average PSNR: {avg_psnr}')
+            model.update_learning_rate()
+
+            # Save metrics plot
+            save_metrics_plot(epoch_mse, epoch_psnr, checkpoint_dir)
+
+            # Clear metrics for the next epoch
+            mse_list = []
+            psnr_list = []
+
+    # Save metrics plot at the end of training
+    save_metrics_plot(epoch_mse, epoch_psnr, checkpoint_dir)
