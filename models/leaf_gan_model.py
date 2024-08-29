@@ -274,8 +274,6 @@ class LeafGANModel(BaseModel):
 		self.backward_D_A()      # calculate gradients for D_A
 		self.backward_D_B()      # calculate graidents for D_B
 		self.optimizer_D.step()  # update D_A and D_B's weights
-	
-	import torch
 
 	def calculate_mse(real_images, reconstructed_images):
     		mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
