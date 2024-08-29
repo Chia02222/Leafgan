@@ -289,7 +289,7 @@ class LeafGANModel(BaseModel):
 
 	def calculate_pixel_accuracy(real_labels, pred_labels):
    		correct_pixels = (real_labels == pred_labels).sum().item()
-    		total_pixels = real_labels.numel()
+		total_pixels = real_labels.numel()
     		accuracy = correct_pixels / total_pixels
     		return accuracy
 		
