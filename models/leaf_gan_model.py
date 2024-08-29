@@ -274,3 +274,35 @@ class LeafGANModel(BaseModel):
 		self.backward_D_A()      # calculate gradients for D_A
 		self.backward_D_B()      # calculate graidents for D_B
 		self.optimizer_D.step()  # update D_A and D_B's weights
+
+	def calculate_mse(real_images, reconstructed_images):
+		mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
+		return mse.item()
+
+	def calculate_psnr(real_images, reconstructed_images):
+		mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
+		psnr = 10 * torch.log10(1 / mse)
+		return psnr.item()
+
+	from skimage.metrics import structural_similarity as ssim
+	import numpy as np
+
+	def calculate_ssim(real_images, reconstructed_images):
+		real_images = real_images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
+		reconstructed_images = reconstructed_images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
+		ssim_scores = [ssim(real, rec, multichannel=True) for real, rec in zip(real_images, reconstructed_images)]
+		return np.mean(ssim_scores)
+
+	def calculate_accuracy(self):
+		# Assuming `self.real_A` and `self.rec_A` are tensors of shape (B, C, H, W)
+		mse = calculate_mse(self.real_A, self.rec_A)
+		psnr = calculate_psnr(self.real_A, self.rec_A)
+		ssim_value = calculate_ssim(self.real_A, self.rec_A)
+		
+		print(f'MSE: {mse}')
+		print(f'PSNR: {psnr}')
+		print(f'SSIM: {ssim_value}')
+
+		# After forward pass, call this method
+	self.calculate_accuracy()
+
