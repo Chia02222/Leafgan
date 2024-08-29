@@ -279,7 +279,7 @@ class LeafGANModel(BaseModel):
 	        """Return the predictions for the current batch."""
 	        # Assuming self.netG is the generator model and it outputs images
 	        with torch.no_grad():
-	            fake_images = self.netG(self.real_A)  # Example: predicting on real_A images
+	            fake_images = self.netG_A(self.real_A)  # Example: predicting on real_A images
 	            # You may need to convert fake_images to a label format depending on your task
 	            predictions = self.convert_to_labels(fake_images)
 	        return predictions
