@@ -275,18 +275,34 @@ class LeafGANModel(BaseModel):
 		self.backward_D_B()      # calculate graidents for D_B
 		self.optimizer_D.step()  # update D_A and D_B's weights
 	
-	def get_current_predictions(self):
-	        """Return the predictions for the current batch."""
-	        # Assuming self.netG is the generator model and it outputs images
-	        with torch.no_grad():
-	            fake_images = self.netG_A(self.real_A)  # Example: predicting on real_A images
-	            # You may need to convert fake_images to a label format depending on your task
-	            predictions = self.convert_to_labels(fake_images)
-	        return predictions
-	
-	def convert_to_labels(self, fake_images):
-	        """Convert generated images to label format, if necessary."""
-	        # Example: If the task is binary classification, you might threshold the output
-	        predictions = (fake_images > 0.5).float()  # Example for binary classification
-	        return predictions.cpu().numpy()  # Convert to numpy array if needed
+	import torch
+
+	def calculate_mse(real_images, reconstructed_images):
+    		mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
+    		return mse.item()
+		
+	def calculate_ssim(real_images, reconstructed_images):
+    		real_images = real_images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
+    		reconstructed_images = reconstructed_images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
+    		ssim_scores = [ssim(real, rec, multichannel=True) for real, rec in zip(real_images, reconstructed_images)]
+    		return np.mean(ssim_scores)
+
+	def calculate_pixel_accuracy(real_labels, pred_labels):
+   		correct_pixels = (real_labels == pred_labels).sum().item()
+    		total_pixels = real_labels.numel()
+    		accuracy = correct_pixels / total_pixels
+    		return accuracy
+		
+	def calculate_accuracy(self):
+    		# Assuming `self.real_A` and `self.rec_A` are tensors of shape (B, C, H, W)
+    		mse = calculate_mse(self.real_A, self.rec_A)
+    		psnr = calculate_psnr(self.real_A, self.rec_A)
+    		ssim_value = calculate_ssim(self.real_A, self.rec_A)
+    
+    		print(f'MSE: {mse}')
+    		print(f'PSNR: {psnr}')
+    		print(f'SSIM: {ssim_value}')
+
+		# After forward pass, call this method
+		self.calculate_accuracy()
 
