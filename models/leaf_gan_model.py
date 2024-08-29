@@ -274,8 +274,8 @@ class LeafGANModel(BaseModel):
 		self.backward_D_A()      # calculate gradients for D_A
 		self.backward_D_B()      # calculate graidents for D_B
 		self.optimizer_D.step()  # update D_A and D_B's weights
-
-    	def calculate_accuracy(self):
+	
+	def calculate_accuracy(self):
         	# Assuming `self.real_A` and `self.rec_A` are tensors of shape (B, C, H, W)
         	mse = self.calculate_mse(self.real_A, self.rec_A)
         	psnr = self.calculate_psnr(self.real_A, self.rec_A)
@@ -284,12 +284,12 @@ class LeafGANModel(BaseModel):
         	print(f'MSE: {mse}')
         	print(f'PSNR: {psnr}')
         	print(f'SSIM: {ssim_value}')
-
-    	def calculate_mse(self, real_images, reconstructed_images):
+	
+	def calculate_mse(self, real_images, reconstructed_images):
         	mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
         	return mse.item()
-
-    	def calculate_psnr(self, real_images, reconstructed_images):
+	
+	def calculate_psnr(self, real_images, reconstructed_images):
         	mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
         	psnr = 10 * torch.log10(1 / mse)
         	return psnr.item()
