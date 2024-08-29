@@ -10,19 +10,27 @@ from util.visualizer import Visualizer
 from skimage.metrics import structural_similarity as ssim
 
 def calculate_mse(real_images, reconstructed_images):
+    device = real_images.device  # Get the device of the first tensor
+    real_images = real_images.to(device)
+    reconstructed_images = reconstructed_images.to(device)
     mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
     return mse.item()
 
 def calculate_psnr(real_images, reconstructed_images):
+    device = real_images.device  # Get the device of the first tensor
+    real_images = real_images.to(device)
+    reconstructed_images = reconstructed_images.to(device)
     mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
     psnr = 10 * torch.log10(1 / mse)
     return psnr.item()
 
 def calculate_ssim(real_images, reconstructed_images):
+    # Ensure the images are on CPU for SSIM computation
     real_images = real_images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
     reconstructed_images = reconstructed_images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
     ssim_scores = [ssim(real, rec, multichannel=True) for real, rec in zip(real_images, reconstructed_images)]
     return np.mean(ssim_scores)
+
 
 def get_current_visuals(self):
     """Return current visualizations."""
@@ -70,11 +78,11 @@ if __name__ == '__main__':
             epoch_iter += opt.batch_size
             model.set_input(data)         # unpack data from dataset and apply preprocessing
             model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
-
+        
             # Calculate and print metrics for each batch
-            real_A = data['A']  # Ground truth images (e.g., data['A'])
-            rec_A = model.get_current_visuals()['rec_A']  # Assuming 'reconstructed' is the key for reconstructed images
-
+            real_A = data['A'].to(model.device)  # Move to the same device as the model
+            rec_A = model.get_current_visuals()['reconstructed'].to(model.device)  # Move to the same device as the model
+        
             mse = calculate_mse(real_A, rec_A)
             psnr = calculate_psnr(real_A, rec_A)
             ssim_value = calculate_ssim(real_A, rec_A)
@@ -83,25 +91,25 @@ if __name__ == '__main__':
                 print(f'MSE: {mse}')
                 print(f'PSNR: {psnr}')
                 print(f'SSIM: {ssim_value}')
-
+        
             # Display and save images
             if total_iters % opt.display_freq == 0:
                 save_result = total_iters % opt.update_html_freq == 0
                 model.compute_visuals()
                 visualizer.display_current_results(model.get_current_visuals(), epoch, save_result)
-
+        
             # Print losses
             if total_iters % opt.print_freq == 0:
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
                 print(f'Epoch: {epoch}, Iteration: {epoch_iter}, Losses: {losses}, Time per batch: {t_comp:.4f}s, Data loading time: {t_data:.4f}s')
-
+        
             # Save latest model
             if total_iters % opt.save_latest_freq == 0:
                 print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
                 save_suffix = f'iter_{total_iters}' if opt.save_by_iter else 'latest'
                 model.save_networks(save_suffix)
-
+        
             iter_data_time = time.time()
 
         # Save model at the end of the epoch
