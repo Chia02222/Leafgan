@@ -56,7 +56,6 @@ if __name__ == '__main__':
             
             # Print available keys in visuals to identify the correct key
             visuals = model.get_current_visuals()
-            print("Available keys in visuals:", visuals.keys())
             
             rec_A_key = 'rec_A'  # Updated to match the provided get_current_visuals method
             if rec_A_key in visuals:
