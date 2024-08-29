@@ -31,28 +31,6 @@ def calculate_ssim(real_images, reconstructed_images):
     ssim_scores = [ssim(real, rec, multichannel=True) for real, rec in zip(real_images, reconstructed_images)]
     return np.mean(ssim_scores)
 
-
-def get_current_visuals(self):
-    """Return current visualizations."""
-    visuals = {}
-    if self.is_using_mask:
-        visuals['real_A'] = self.real_A
-        visuals['fake_B'] = self.fake_B
-        visuals['rec_A'] = self.rec_A
-        visuals['real_B'] = self.real_B
-        visuals['fake_A'] = self.fake_A
-        visuals['rec_B'] = self.rec_B
-    else:
-        visuals['real_A'] = self.real_A
-        visuals['fake_B'] = self.fake_B
-        visuals['rec_A'] = self.rec_A
-        visuals['real_B'] = self.real_B
-        visuals['fake_A'] = self.fake_A
-        visuals['rec_B'] = self.rec_B
-        visuals['mask_A'] = self.foreground_real_A
-        visuals['mask_B'] = self.foreground_real_B
-    return visuals
-
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
@@ -78,38 +56,47 @@ if __name__ == '__main__':
             epoch_iter += opt.batch_size
             model.set_input(data)         # unpack data from dataset and apply preprocessing
             model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
-        
+
             # Calculate and print metrics for each batch
             real_A = data['A'].to(model.device)  # Move to the same device as the model
-            rec_A = model.get_current_visuals()['reconstructed'].to(model.device)  # Move to the same device as the model
-        
-            mse = calculate_mse(real_A, rec_A)
-            psnr = calculate_psnr(real_A, rec_A)
-            ssim_value = calculate_ssim(real_A, rec_A)
             
-            if total_iters % opt.print_freq == 0:
-                print(f'MSE: {mse}')
-                print(f'PSNR: {psnr}')
-                print(f'SSIM: {ssim_value}')
-        
+            # Print available keys in visuals to identify the correct key
+            visuals = model.get_current_visuals()
+            print("Available keys in visuals:", visuals.keys())
+            
+            rec_A_key = 'rec_A'  # Updated to match the provided get_current_visuals method
+            if rec_A_key in visuals:
+                rec_A = visuals[rec_A_key].to(model.device)  # Move to the same device as the model
+
+                mse = calculate_mse(real_A, rec_A)
+                psnr = calculate_psnr(real_A, rec_A)
+                ssim_value = calculate_ssim(real_A, rec_A)
+                
+                if total_iters % opt.print_freq == 0:
+                    print(f'MSE: {mse}')
+                    print(f'PSNR: {psnr}')
+                    print(f'SSIM: {ssim_value}')
+            else:
+                print(f"Key '{rec_A_key}' not found in visuals")
+
             # Display and save images
             if total_iters % opt.display_freq == 0:
                 save_result = total_iters % opt.update_html_freq == 0
                 model.compute_visuals()
                 visualizer.display_current_results(model.get_current_visuals(), epoch, save_result)
-        
+
             # Print losses
             if total_iters % opt.print_freq == 0:
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
                 print(f'Epoch: {epoch}, Iteration: {epoch_iter}, Losses: {losses}, Time per batch: {t_comp:.4f}s, Data loading time: {t_data:.4f}s')
-        
+
             # Save latest model
             if total_iters % opt.save_latest_freq == 0:
                 print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
                 save_suffix = f'iter_{total_iters}' if opt.save_by_iter else 'latest'
                 model.save_networks(save_suffix)
-        
+
             iter_data_time = time.time()
 
         # Save model at the end of the epoch
