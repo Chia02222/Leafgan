@@ -13,6 +13,10 @@ from . import networks
 from .base_model import BaseModel
 from .grad_cam import GradCAM
 
+from skimage.metrics import structural_similarity as ssim
+import numpy as np
+
+
 
 class LeafGANModel(BaseModel):
 	"""
@@ -293,11 +297,8 @@ class LeafGANModel(BaseModel):
         	mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
         	psnr = 10 * torch.log10(1 / mse)
         	return psnr.item()
-
-    	from skimage.metrics import structural_similarity as ssim
-    	import numpy as np
-
-    	def calculate_ssim(self, real_images, reconstructed_images):
+	
+	def calculate_ssim(self, real_images, reconstructed_images):
         	real_images = real_images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
         	reconstructed_images = reconstructed_images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
         	ssim_scores = [ssim(real, rec, multichannel=True) for real, rec in zip(real_images, reconstructed_images)]
