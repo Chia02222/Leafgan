@@ -24,17 +24,6 @@ def calculate_psnr(real_images, reconstructed_images):
     psnr = 10 * torch.log10(1 / mse)
     return psnr.item()
 
-def calculate_ssim(real_images, reconstructed_images):
-    # Ensure the images are on CPU and detach from the computation graph
-    real_images = real_images.detach().cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
-    reconstructed_images = reconstructed_images.detach().cpu().numpy().transpose(0, 2, 3, 1)  # Convert to HWC
-    
-    # Define a valid window size
-    win_size = 11  # This should be an odd number less than or equal to the smallest dimension of your images
-
-    ssim_scores = [ssim(real, rec, multichannel=True, win_size=win_size) for real, rec in zip(real_images, reconstructed_images)]
-    return np.mean(ssim_scores)
-
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
@@ -75,12 +64,10 @@ if __name__ == '__main__':
 
                 mse = calculate_mse(real_A, rec_A)
                 psnr = calculate_psnr(real_A, rec_A)
-                ssim_value = calculate_ssim(real_A, rec_A)
                 
                 if total_iters % opt.print_freq == 0:
                     print(f'MSE: {mse}')
                     print(f'PSNR: {psnr}')
-                    print(f'SSIM: {ssim_value}')
             else:
                 print(f"Key '{rec_A_key}' not found in visuals")
 
