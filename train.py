@@ -25,7 +25,7 @@ def calculate_psnr(real_images, reconstructed_images):
     psnr = 10 * torch.log10(1 / mse)
     return psnr.item()
 
-def save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, checkpoint_dir):
+def save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_fid, epoch_is, checkpoint_dir):
     plt.figure()
     plt.subplot(2, 2, 1)
     plt.plot(range(len(epoch_mse_A)), epoch_mse_A, label='Average MSE A')
@@ -97,7 +97,6 @@ if __name__ == '__main__':
     epoch_losses = []
     epoch_fid = []
     epoch_is = []
-    epoch_losses = []
 
     checkpoint_dir = 'checkpoints'
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -117,104 +116,105 @@ if __name__ == '__main__':
         mse_list_B = []
         psnr_list_B = []
 
-    for i, data in enumerate(dataset):
-        iter_start_time = time.time()
-        if total_iters % opt.print_freq == 0:
-            t_data = iter_start_time - iter_data_time
-        visualizer.reset()
-        total_iters += opt.batch_size
-        epoch_iter += opt.batch_size
-        model.set_input(data)
-        model.optimize_parameters()
+        for i, data in enumerate(dataset):
+            iter_start_time = time.time()
+            if total_iters % opt.print_freq == 0:
+                t_data = iter_start_time - iter_data_time
+            visualizer.reset()
+            total_iters += opt.batch_size
+            epoch_iter += opt.batch_size
+            model.set_input(data)
+            model.optimize_parameters()
 
-        real_A = data['A'].to(model.device)
-        real_B = data['B'].to(model.device)
-        visuals = model.get_current_visuals()
+            real_A = data['A'].to(model.device)
+            real_B = data['B'].to(model.device)
+            visuals = model.get_current_visuals()
 
-        rec_A_key = 'rec_A'
-        rec_B_key = 'rec_B'
-        if rec_A_key in visuals:
-            rec_A = visuals[rec_A_key].to(model.device)
+            rec_A_key = 'rec_A'
+            rec_B_key = 'rec_B'
+            if rec_A_key in visuals:
+                rec_A = visuals[rec_A_key].to(model.device)
 
-            mse_A = calculate_mse(real_A, rec_A)
-            psnr_A = calculate_psnr(real_A, rec_A)
+                mse_A = calculate_mse(real_A, rec_A)
+                psnr_A = calculate_psnr(real_A, rec_A)
 
-            mse_list_A.append(mse_A)
-            psnr_list_A.append(psnr_A)
+                mse_list_A.append(mse_A)
+                psnr_list_A.append(psnr_A)
+
+                if total_iters % opt.print_freq == 0:
+                    print(f'MSE A: {mse_A}')
+                    print(f'PSNR A: {psnr_A}')
+
+            if rec_B_key in visuals:
+                rec_B = visuals[rec_B_key].to(model.device)
+
+                mse_B = calculate_mse(real_B, rec_B)
+                psnr_B = calculate_psnr(real_B, rec_B)
+
+                mse_list_B.append(mse_B)
+                psnr_list_B.append(psnr_B)
+
+                if total_iters % opt.print_freq == 0:
+                    print(f'MSE B: {mse_B}')
+                    print(f'PSNR B: {psnr_B}')
+
+            if total_iters % opt.display_freq == 0:
+                save_result = total_iters % opt.update_html_freq == 0
+                model.compute_visuals()
+                visualizer.display_current_results(model.get_current_visuals(), epoch, save_result)
 
             if total_iters % opt.print_freq == 0:
-                print(f'MSE A: {mse_A}')
-                print(f'PSNR A: {psnr_A}')
+                losses = model.get_current_losses()
+                t_comp = (time.time() - iter_start_time) / opt.batch_size
+                print(f'Epoch: {epoch}, Iteration: {epoch_iter}, Losses: {losses}, Time per batch: {t_comp:.4f}s, Data loading time: {t_data:.4f}s')
 
-        if rec_B_key in visuals:
-            rec_B = visuals[rec_B_key].to(model.device)
+            if total_iters % opt.save_latest_freq == 0:
+                print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
+                save_suffix = f'iter_{total_iters}' if opt.save_by_iter else 'latest'
+                model.save_networks(save_suffix)
 
-            mse_B = calculate_mse(real_B, rec_B)
-            psnr_B = calculate_psnr(real_B, rec_B)
+            iter_data_time = time.time()
 
-            mse_list_B.append(mse_B)
-            psnr_list_B.append(psnr_B)
+        if epoch % opt.save_epoch_freq == 0:
+            print(f'Saving the model at the end of epoch {epoch}, iters {total_iters}')
+            model.save_networks('latest')
+            model.save_networks(epoch)
 
-            if total_iters % opt.print_freq == 0:
-                print(f'MSE B: {mse_B}')
-                print(f'PSNR B: {psnr_B}')
+            # Calculate and store average metrics for the epoch
+            avg_mse_A = np.mean(mse_list_A)
+            avg_psnr_A = np.mean(psnr_list_A)
+            avg_mse_B = np.mean(mse_list_B)
+            avg_psnr_B = np.mean(psnr_list_B)
+            avg_loss = np.mean([losses[k] for k in losses])  # Calculate average loss
+            epoch_mse_A.append(avg_mse_A)
+            epoch_psnr_A.append(avg_psnr_A)
+            epoch_mse_B.append(avg_mse_B)
+            epoch_psnr_B.append(avg_psnr_B)
+            epoch_losses.append(avg_loss)
 
-        if total_iters % opt.display_freq == 0:
-            save_result = total_iters % opt.update_html_freq == 0
-            model.compute_visuals()
-            visualizer.display_current_results(model.get_current_visuals(), epoch, save_result)
+            # Convert images to datasets for FID and IS calculation
+            real_dataset_A = DataLoader(real_images_A, batch_size=1, shuffle=False)
+            generated_dataset_A = DataLoader(generated_images_A, batch_size=1, shuffle=False)
+            real_dataset_B = DataLoader(real_images_B, batch_size=1, shuffle=False)
+            generated_dataset_B = DataLoader(generated_images_B, batch_size=1, shuffle=False)
 
-        if total_iters % opt.print_freq == 0:
-            losses = model.get_current_losses()
-            t_comp = (time.time() - iter_start_time) / opt.batch_size
-            print(f'Epoch: {epoch}, Iteration: {epoch_iter}, Losses: {losses}, Time per batch: {t_comp:.4f}s, Data loading time: {t_data:.4f}s')
+            # Calculate FID and IS for Domain A
+            fid_A = calculate_fid_given_paths(real_dataset_A, generated_dataset_A, batch_size=1, device='cuda' if torch.cuda.is_available() else 'cpu')
+            is_A, is_std_A = get_inception_score(generated_dataset_A, device='cuda' if torch.cuda.is_available() else 'cpu')
 
-        if total_iters % opt.save_latest_freq == 0:
-            print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
-            save_suffix = f'iter_{total_iters}' if opt.save_by_iter else 'latest'
-            model.save_networks(save_suffix)
+            # Calculate FID and IS for Domain B
+            fid_B = calculate_fid_given_paths(real_dataset_B, generated_dataset_B, batch_size=1, device='cuda' if torch.cuda.is_available() else 'cpu')
+            is_B, is_std_B = get_inception_score(generated_dataset_B, device='cuda' if torch.cuda.is_available() else 'cpu')
 
-        iter_data_time = time.time()
+            epoch_fid.append((fid_A + fid_B) / 2)
+            epoch_is.append((is_A + is_B) / 2)
 
-    if epoch % opt.save_epoch_freq == 0:
-        print(f'Saving the model at the end of epoch {epoch}, iters {total_iters}')
-        model.save_networks('latest')
-        model.save_networks(epoch)
+            print(f'Epoch: {epoch}, Average MSE A: {avg_mse_A:.4f}, Average PSNR A: {avg_psnr_A:.4f}')
+            print(f'Epoch: {epoch}, Average MSE B: {avg_mse_B:.4f}, Average PSNR B: {avg_psnr_B:.4f}')
 
-        # Calculate and store average metrics for the epoch
-        avg_mse_A = np.mean(mse_list_A)
-        avg_psnr_A = np.mean(psnr_list_A)
-        avg_mse_B = np.mean(mse_list_B)
-        avg_psnr_B = np.mean(psnr_list_B)
-        avg_loss = np.mean([losses[k] for k in losses])  # Calculate average loss
-        epoch_mse_A.append(avg_mse_A)
-        epoch_psnr_A.append(avg_psnr_A)
-        epoch_mse_B.append(avg_mse_B)
-        epoch_psnr_B.append(avg_psnr_B)
-        epoch_losses.append(avg_loss)
-
-        # Convert images to datasets for FID and IS calculation
-        real_dataset_A = DataLoader(real_images_A, batch_size=1, shuffle=False)
-        generated_dataset_A = DataLoader(generated_images_A, batch_size=1, shuffle=False)
-        real_dataset_B = DataLoader(real_images_B, batch_size=1, shuffle=False)
-        generated_dataset_B = DataLoader(generated_images_B, batch_size=1, shuffle=False)
-
-        # Calculate FID and IS for Domain A
-        fid_A = calculate_fid_given_paths(real_dataset_A, generated_dataset_A, batch_size=1, device='cuda' if torch.cuda.is_available() else 'cpu')
-        is_A, is_std_A = get_inception_score(generated_dataset_A, device='cuda' if torch.cuda.is_available() else 'cpu')
-
-        # Calculate FID and IS for Domain B
-        fid_B = calculate_fid_given_paths(real_dataset_B, generated_dataset_B, batch_size=1, device='cuda' if torch.cuda.is_available() else 'cpu')
-        is_B, is_std_B = get_inception_score(generated_dataset_B, device='cuda' if torch.cuda.is_available() else 'cpu')
-
-        epoch_fid.append((fid_A + fid_B) / 2)
-        epoch_is.append((is_A + is_B) / 2)
-
-        print(f'Epoch: {epoch}, Average MSE A: {avg_mse_A}, Average PSNR A: {avg_psnr_A}, Average MSE B: {avg_mse_B}, Average PSNR B: {avg_psnr_B}, FID: {(fid_A + fid_B) / 2}, Inception Score: {(is_A + is_B) / 2}')
+        print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
 
     save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_fid, epoch_is, checkpoint_dir)
-    save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_fid, epoch_is, epoch_losses, checkpoint_dir)
-
-    print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.4f} sec')
+    save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, checkpoint_dir)
 
     model.update_learning_rate()
