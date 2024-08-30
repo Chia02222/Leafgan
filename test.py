@@ -99,6 +99,7 @@ if __name__ == '__main__':
         real_A = data['A'].to(model.device)
         real_B = data['B'].to(model.device)
         visuals = model.get_current_visuals()
+        img_path = model.get_image_paths() 
         
         if 'rec_A' in visuals:
             rec_A = visuals['rec_A'].to(model.device)
