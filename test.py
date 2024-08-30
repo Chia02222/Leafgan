@@ -57,13 +57,13 @@ def save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, chec
     plt.savefig(os.path.join(checkpoint_dir, 'metrics_plot.png'))
     plt.close()
 
-def save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, checkpoint_dir):
+def save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, checkpoint_dir):
     csv_file = os.path.join(checkpoint_dir, 'metrics.csv')
     with open(csv_file, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Epoch', 'Average MSE A', 'Average PSNR A', 'Average MSE B', 'Average PSNR B', 'Loss'])
+        writer.writerow(['Epoch', 'Average MSE A', 'Average PSNR A', 'Average MSE B', 'Average PSNR B'])
         for epoch in range(len(epoch_mse_A)):
-            writer.writerow([epoch + 1, epoch_mse_A[epoch], epoch_psnr_A[epoch], epoch_mse_B[epoch], epoch_psnr_B[epoch], epoch_losses[epoch]])
+            writer.writerow([epoch + 1, epoch_mse_A[epoch], epoch_psnr_A[epoch], epoch_mse_B[epoch], epoch_psnr_B[epoch]])
 
 if __name__ == '__main__':
     opt = TestOptions().parse()  # get test options
@@ -84,7 +84,6 @@ if __name__ == '__main__':
     epoch_psnr_A = []
     epoch_mse_B = []
     epoch_psnr_B = []
-    epoch_losses = []
 
     web_dir = os.path.join(opt.results_dir, opt.name, '%s_%s' % (opt.phase, opt.epoch))
     webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.epoch))
@@ -100,7 +99,6 @@ if __name__ == '__main__':
         real_A = data['A'].to(model.device)
         real_B = data['B'].to(model.device)
         visuals = model.get_current_visuals()
-        losses = model.get_current_losses()
         
         if 'rec_A' in visuals:
             rec_A = visuals['rec_A'].to(model.device)
@@ -124,12 +122,10 @@ if __name__ == '__main__':
         avg_psnr_A = np.mean(psnr_list_A) 
         avg_mse_B = np.mean(mse_list_B) 
         avg_psnr_B = np.mean(psnr_list_B) 
-        avg_loss = np.mean([losses[k] for k in losses]) 
         epoch_mse_A.append(avg_mse_A)
         epoch_psnr_A.append(avg_psnr_A)
         epoch_mse_B.append(avg_mse_B)
         epoch_psnr_B.append(avg_psnr_B)
-        epoch_losses.append(avg_loss)
 
         print(f'Epoch: {i}, Average MSE A: {avg_mse_A:.4f}, Average PSNR A: {avg_psnr_A:.4f}')
         print(f'Epoch: {i}, Average MSE B: {avg_mse_B:.4f}, Average PSNR B: {avg_psnr_B:.4f}')
@@ -140,6 +136,6 @@ if __name__ == '__main__':
     checkpoint_dir = os.path.join(opt.results_dir, 'checkpoints')
     os.makedirs(checkpoint_dir, exist_ok=True)
     save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, checkpoint_dir)
-    save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, checkpoint_dir)
+    save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, checkpoint_dir)
 
     webpage.save()
