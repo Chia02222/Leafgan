@@ -4,44 +4,11 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import save_images
 from util import html
-import torch
-import numpy as np
-from skimage.metrics import peak_signal_noise_ratio as compare_psnr
-from skimage.metrics import mean_squared_error as compare_mse
-import csv
-from torchvision import transforms
-from torch.utils.data import DataLoader, Dataset
-from PIL import Image
 
-def calculate_rmse(imageA, imageB):
-    mse = compare_mse(imageA, imageB)
-    rmse = np.sqrt(mse)
-    return rmse
-
-def calculate_psnr(imageA, imageB):
-    psnr = compare_psnr(imageA, imageB)
-    return psnr
-
-class ImageDataset(Dataset):
-    def __init__(self, images):
-        self.images = images
-        self.transform = transforms.Compose([
-            transforms.Resize((299, 299)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ])
-
-    def __len__(self):
-        return len(self.images)
-
-    def __getitem__(self, idx):
-        img = self.images[idx].numpy().transpose(1, 2, 0)
-        img = Image.fromarray((img * 255).astype(np.uint8))
-        img = self.transform(img)
-        return img
 
 if __name__ == '__main__':
     opt = TestOptions().parse()  # get test options
+    # hard-code some parameters for test
     opt.num_threads = 0   # test code only supports num_threads = 1
     opt.batch_size = 1    # test code only supports batch_size = 1
     opt.serial_batches = True  # disable data shuffling; comment this line if results on randomly chosen images are needed.
@@ -50,22 +17,14 @@ if __name__ == '__main__':
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     model = create_model(opt)      # create a model given opt.model and other options
     model.setup(opt)               # regular setup: load and print networks; create schedulers
-    
+    # create a website
     web_dir = os.path.join(opt.results_dir, opt.name, '%s_%s' % (opt.phase, opt.epoch))  # define the website directory
     webpage = html.HTML(web_dir, 'Experiment = %s, Phase = %s, Epoch = %s' % (opt.name, opt.phase, opt.epoch))
-
-    # Initialize CSV file to save metrics
-    metrics_file = os.path.join(web_dir, 'metrics.csv')
-    with open(metrics_file, mode='w') as file:
-        writer = csv.writer(file)
-        writer.writerow(['Image', 'RMSE', 'PSNR'])
-
+    # test with eval mode. This only affects layers like batchnorm and dropout.
+    # For [pix2pix]: we use batchnorm and dropout in the original pix2pix. You can experiment it with and without eval() mode.
+    # For [CycleGAN]: It should not affect CycleGAN as CycleGAN uses instancenorm without dropout.
     if opt.eval:
         model.eval()
-
-    real_images = []
-    generated_images = []
-
     for i, data in enumerate(dataset):
         if i >= opt.num_test:  # only apply our model to opt.num_test images.
             break
@@ -75,27 +34,5 @@ if __name__ == '__main__':
         img_path = model.get_image_paths()     # get image paths
         if i % 5 == 0:  # save images to an HTML file
             print('processing (%04d)-th image... %s' % (i, img_path))
-        
-        # Convert tensors to numpy arrays for RMSE and PSNR calculation
-        real_A = visuals['real_A'].cpu().numpy().transpose(1, 2, 0)  # Convert tensor to numpy
-        fake_B = visuals['fake_B'].cpu().numpy().transpose(1, 2, 0)  # Convert tensor to numpy
-
-        # Save real and generated images for future use
-        real_images.append(visuals['real_A'].cpu())
-        generated_images.append(visuals['fake_B'].cpu())
-
-        # Calculate RMSE and PSNR
-        rmse_value = calculate_rmse(real_A, fake_B)
-        psnr_value = calculate_psnr(real_A, fake_B)
-
-        print(f'Image {i}: RMSE = {rmse_value}, PSNR = {psnr_value}')
-        
-        # Save metrics to CSV
-        with open(metrics_file, mode='a') as file:
-            writer = csv.writer(file)
-            writer.writerow([img_path[0], rmse_value, psnr_value])
-        
-        # Save the images
         save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize)
-
     webpage.save()  # save the HTML
