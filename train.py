@@ -8,8 +8,6 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
-from torch.utils.data import DataLoader
-from util.inception_score import get_inception_score
 
 def calculate_mse(real_images, reconstructed_images):
     device = real_images.device
@@ -26,7 +24,7 @@ def calculate_psnr(real_images, reconstructed_images):
     psnr = 10 * torch.log10(1 / mse)
     return psnr.item()
 
-def save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_is, checkpoint_dir):
+def save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, checkpoint_dir):
     plt.figure()
     plt.subplot(2, 2, 1)
     plt.plot(range(len(epoch_mse_A)), epoch_mse_A, label='Average MSE A')
@@ -52,23 +50,17 @@ def save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoc
     plt.ylabel('Average PSNR B')
     plt.legend()
 
-    plt.subplot(3, 1, 1)
-    plt.plot(range(len(epoch_is)), epoch_is, label='Inception Score')
-    plt.xlabel('Epoch')
-    plt.ylabel('Inception Score')
-    plt.legend()
-
     plt.tight_layout()
     plt.savefig(os.path.join(checkpoint_dir, 'metrics_plot.png'))
     plt.close()
 
-def save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, epoch_is, checkpoint_dir):
+def save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, checkpoint_dir):
     csv_file = os.path.join(checkpoint_dir, 'metrics.csv')
     with open(csv_file, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Epoch', 'Average MSE A', 'Average PSNR A', 'Average MSE B', 'Average PSNR B', 'Loss', 'Inception Score'])
+        writer.writerow(['Epoch', 'Average MSE A', 'Average PSNR A', 'Average MSE B', 'Average PSNR B', 'Loss'])
         for epoch in range(len(epoch_mse_A)):
-            writer.writerow([epoch + 1, epoch_mse_A[epoch], epoch_psnr_A[epoch], epoch_mse_B[epoch], epoch_psnr_B[epoch], epoch_losses[epoch], epoch_is[epoch]])
+            writer.writerow([epoch + 1, epoch_mse_A[epoch], epoch_psnr_A[epoch], epoch_mse_B[epoch], epoch_psnr_B[epoch], epoch_losses[epoch]])
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()
@@ -90,7 +82,6 @@ if __name__ == '__main__':
     epoch_mse_B = []
     epoch_psnr_B = []
     epoch_losses = []
-    epoch_is = []
 
     checkpoint_dir = 'checkpoints'
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -186,24 +177,12 @@ if __name__ == '__main__':
             epoch_psnr_B.append(avg_psnr_B)
             epoch_losses.append(avg_loss)
 
-            # Convert images to datasets for IS calculation
-            generated_dataset_A = DataLoader(generated_images_A, batch_size=1, shuffle=False)
-            generated_dataset_B = DataLoader(generated_images_B, batch_size=1, shuffle=False)
-
-            # Calculate IS for Domain A
-            is_A, _ = get_inception_score(generated_dataset_A, device='cuda' if torch.cuda.is_available() else 'cpu')
-
-            # Calculate IS for Domain B
-            is_B, _ = get_inception_score(generated_dataset_B, device='cuda' if torch.cuda.is_available() else 'cpu')
-
-            epoch_is.append((is_A + is_B) / 2)
-
             print(f'Epoch: {epoch}, Average MSE A: {avg_mse_A:.4f}, Average PSNR A: {avg_psnr_A:.4f}')
             print(f'Epoch: {epoch}, Average MSE B: {avg_mse_B:.4f}, Average PSNR B: {avg_psnr_B:.4f}')
 
         print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
 
-    save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_is, checkpoint_dir)
-    save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, epoch_is, checkpoint_dir)
+    save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, checkpoint_dir)
+    save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, checkpoint_dir)
 
     model.update_learning_rate()
