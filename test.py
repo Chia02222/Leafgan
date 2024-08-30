@@ -119,11 +119,11 @@ if __name__ == '__main__':
             break
 
         # Calculate and store average metrics for the epoch
-        avg_mse_A = np.mean(mse_list_A) if mse_list_A else 0
-        avg_psnr_A = np.mean(psnr_list_A) if psnr_list_A else 0
-        avg_mse_B = np.mean(mse_list_B) if mse_list_B else 0
-        avg_psnr_B = np.mean(psnr_list_B) if psnr_list_B else 0
-        avg_loss = np.mean(model.get_current_losses().values()) if model.get_current_losses() else 0
+        avg_mse_A = np.mean(mse_list_A) 
+        avg_psnr_A = np.mean(psnr_list_A) 
+        avg_mse_B = np.mean(mse_list_B) 
+        avg_psnr_B = np.mean(psnr_list_B) 
+        avg_loss = np.mean([losses[k] for k in losses]) 
         epoch_mse_A.append(avg_mse_A)
         epoch_psnr_A.append(avg_psnr_A)
         epoch_mse_B.append(avg_mse_B)
