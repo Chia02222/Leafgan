@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import os
+import csv
 from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
@@ -42,6 +43,14 @@ def save_metrics_plot(epoch_mse, epoch_psnr, checkpoint_dir):
     plt.savefig(os.path.join(checkpoint_dir, 'metrics_plot.png'))
     plt.close()
 
+def save_metrics_csv(epoch_mse, epoch_psnr, epoch_losses, checkpoint_dir):
+    csv_file = os.path.join(checkpoint_dir, 'metrics.csv')
+    with open(csv_file, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Epoch', 'Average MSE', 'Average PSNR', 'Loss'])
+        for epoch in range(len(epoch_mse)):
+            writer.writerow([epoch + 1, epoch_mse[epoch], epoch_psnr[epoch], epoch_losses[epoch]])
+
 if __name__ == '__main__':
     opt = TrainOptions().parse()
     dataset = create_dataset(opt)
@@ -57,6 +66,7 @@ if __name__ == '__main__':
     psnr_list = []
     epoch_mse = []
     epoch_psnr = []
+    epoch_losses = []
 
     checkpoint_dir = 'checkpoints'
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -120,19 +130,23 @@ if __name__ == '__main__':
             # Calculate and store average metrics for the epoch
             avg_mse = np.mean(mse_list)
             avg_psnr = np.mean(psnr_list)
+            avg_loss = np.mean([losses[k] for k in losses])  # Calculate average loss
             epoch_mse.append(avg_mse)
             epoch_psnr.append(avg_psnr)
+            epoch_losses.append(avg_loss)
 
             print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
-            print(f'Epoch {epoch} - Average MSE: {avg_mse}, Average PSNR: {avg_psnr}')
+            print(f'Epoch {epoch} - Average MSE: {avg_mse}, Average PSNR: {avg_psnr}, Average Loss: {avg_loss}')
             model.update_learning_rate()
 
-            # Save metrics plot
+            # Save metrics plot and CSV
             save_metrics_plot(epoch_mse, epoch_psnr, checkpoint_dir)
+            save_metrics_csv(epoch_mse, epoch_psnr, epoch_losses, checkpoint_dir)
 
             # Clear metrics for the next epoch
             mse_list = []
             psnr_list = []
 
-    # Save metrics plot at the end of training
+    # Save metrics plot and CSV at the end of training
     save_metrics_plot(epoch_mse, epoch_psnr, checkpoint_dir)
+    save_metrics_csv(epoch_mse, epoch_psnr, epoch_losses, checkpoint_dir)
