@@ -8,7 +8,9 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
-from torch.utils.data import DataLoader  
+from torch.utils.data import DataLoader
+from pytorch_fid import calculate_fid_given_paths
+
 
 def calculate_mse(real_images, reconstructed_images):
     device = real_images.device
