@@ -100,7 +100,8 @@ if __name__ == '__main__':
         real_A = data['A'].to(model.device)
         real_B = data['B'].to(model.device)
         visuals = model.get_current_visuals()
-
+        losses = model.get_current_losses()
+        
         if 'rec_A' in visuals:
             rec_A = visuals['rec_A'].to(model.device)
             mse_A = calculate_mse(real_A, rec_A)
