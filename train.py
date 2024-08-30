@@ -9,9 +9,7 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
 from torch.utils.data import DataLoader
-from pytorch_fid import calculate_fid_given_paths
 from util.inception_score import get_inception_score
-
 
 def calculate_mse(real_images, reconstructed_images):
     device = real_images.device
@@ -28,7 +26,7 @@ def calculate_psnr(real_images, reconstructed_images):
     psnr = 10 * torch.log10(1 / mse)
     return psnr.item()
 
-def save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_fid, epoch_is, checkpoint_dir):
+def save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_is, checkpoint_dir):
     plt.figure()
     plt.subplot(2, 2, 1)
     plt.plot(range(len(epoch_mse_A)), epoch_mse_A, label='Average MSE A')
@@ -54,13 +52,7 @@ def save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoc
     plt.ylabel('Average PSNR B')
     plt.legend()
 
-    plt.subplot(3, 2, 5)
-    plt.plot(range(len(epoch_fid)), epoch_fid, label='FID')
-    plt.xlabel('Epoch')
-    plt.ylabel('FID')
-    plt.legend()
-
-    plt.subplot(3, 2, 6)
+    plt.subplot(3, 1, 1)
     plt.plot(range(len(epoch_is)), epoch_is, label='Inception Score')
     plt.xlabel('Epoch')
     plt.ylabel('Inception Score')
@@ -70,13 +62,13 @@ def save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoc
     plt.savefig(os.path.join(checkpoint_dir, 'metrics_plot.png'))
     plt.close()
 
-def save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, checkpoint_dir):
+def save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, epoch_is, checkpoint_dir):
     csv_file = os.path.join(checkpoint_dir, 'metrics.csv')
     with open(csv_file, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Epoch', 'Average MSE A', 'Average PSNR A', 'Average MSE B', 'Average PSNR B', 'Loss'])
+        writer.writerow(['Epoch', 'Average MSE A', 'Average PSNR A', 'Average MSE B', 'Average PSNR B', 'Loss', 'Inception Score'])
         for epoch in range(len(epoch_mse_A)):
-            writer.writerow([epoch + 1, epoch_mse_A[epoch], epoch_psnr_A[epoch], epoch_mse_B[epoch], epoch_psnr_B[epoch], epoch_losses[epoch]])
+            writer.writerow([epoch + 1, epoch_mse_A[epoch], epoch_psnr_A[epoch], epoch_mse_B[epoch], epoch_psnr_B[epoch], epoch_losses[epoch], epoch_is[epoch]])
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()
@@ -98,7 +90,6 @@ if __name__ == '__main__':
     epoch_mse_B = []
     epoch_psnr_B = []
     epoch_losses = []
-    epoch_fid = []
     epoch_is = []
 
     checkpoint_dir = 'checkpoints'
@@ -195,21 +186,16 @@ if __name__ == '__main__':
             epoch_psnr_B.append(avg_psnr_B)
             epoch_losses.append(avg_loss)
 
-            # Convert images to datasets for FID and IS calculation
-            real_dataset_A = DataLoader(real_images_A, batch_size=1, shuffle=False)
+            # Convert images to datasets for IS calculation
             generated_dataset_A = DataLoader(generated_images_A, batch_size=1, shuffle=False)
-            real_dataset_B = DataLoader(real_images_B, batch_size=1, shuffle=False)
             generated_dataset_B = DataLoader(generated_images_B, batch_size=1, shuffle=False)
 
-            # Calculate FID and IS for Domain A
-            fid_A = calculate_fid_given_paths(real_dataset_A, generated_dataset_A, batch_size=1, device='cuda' if torch.cuda.is_available() else 'cpu')
-            is_A, is_std_A = get_inception_score(generated_dataset_A, device='cuda' if torch.cuda.is_available() else 'cpu')
+            # Calculate IS for Domain A
+            is_A, _ = get_inception_score(generated_dataset_A, device='cuda' if torch.cuda.is_available() else 'cpu')
 
-            # Calculate FID and IS for Domain B
-            fid_B = calculate_fid_given_paths(real_dataset_B, generated_dataset_B, batch_size=1, device='cuda' if torch.cuda.is_available() else 'cpu')
-            is_B, is_std_B = get_inception_score(generated_dataset_B, device='cuda' if torch.cuda.is_available() else 'cpu')
+            # Calculate IS for Domain B
+            is_B, _ = get_inception_score(generated_dataset_B, device='cuda' if torch.cuda.is_available() else 'cpu')
 
-            epoch_fid.append((fid_A + fid_B) / 2)
             epoch_is.append((is_A + is_B) / 2)
 
             print(f'Epoch: {epoch}, Average MSE A: {avg_mse_A:.4f}, Average PSNR A: {avg_psnr_A:.4f}')
@@ -217,7 +203,7 @@ if __name__ == '__main__':
 
         print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
 
-    save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_fid, epoch_is, checkpoint_dir)
-    save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, checkpoint_dir)
+    save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_is, checkpoint_dir)
+    save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, epoch_is, checkpoint_dir)
 
     model.update_learning_rate()
