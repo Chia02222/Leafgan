@@ -9,8 +9,6 @@ import numpy as np
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 from skimage.metrics import mean_squared_error as compare_mse
 import csv
-from pytorch_fid import fid_score
-from pytorch_gan_metrics import get_inception_score
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image
@@ -82,7 +80,7 @@ if __name__ == '__main__':
         real_A = visuals['real_A'].cpu().numpy().transpose(1, 2, 0)  # Convert tensor to numpy
         fake_B = visuals['fake_B'].cpu().numpy().transpose(1, 2, 0)  # Convert tensor to numpy
 
-        # Save real and generated images for FID/IS calculation
+        # Save real and generated images for future use
         real_images.append(visuals['real_A'].cpu())
         generated_images.append(visuals['fake_B'].cpu())
 
@@ -101,26 +99,3 @@ if __name__ == '__main__':
         save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize)
 
     webpage.save()  # save the HTML
-
-    # Convert list of tensors to datasets
-    real_dataset = ImageDataset(real_images)
-    generated_dataset = ImageDataset(generated_images)
-
-    # Create data loaders
-    real_loader = DataLoader(real_dataset, batch_size=1, shuffle=False)
-    generated_loader = DataLoader(generated_dataset, batch_size=1, shuffle=False)
-
-    # Calculate FID
-    fid_value = fid_score.calculate_fid_given_paths(real_loader, generated_loader, batch_size=1, device='cuda' if torch.cuda.is_available() else 'cpu')
-    print(f'FID: {fid_value}')
-
-    # Calculate Inception Score
-    is_value, is_std = get_inception_score(generated_loader, device='cuda' if torch.cuda.is_available() else 'cpu')
-    print(f'Inception Score: {is_value}, Standard Deviation: {is_std}')
-
-    # Save FID and IS values to CSV
-    with open(metrics_file, mode='a') as file:
-        writer = csv.writer(file)
-        writer.writerow(['FID', fid_value])
-        writer.writerow(['Inception Score', is_value])
-        writer.writerow(['Inception Score Std Dev', is_std])
