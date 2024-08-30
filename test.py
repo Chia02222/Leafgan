@@ -128,8 +128,8 @@ if __name__ == '__main__':
         epoch_mse_B.append(avg_mse_B)
         epoch_psnr_B.append(avg_psnr_B)
 
-        print(f'Epoch: {i}, Average MSE A: {avg_mse_A:.4f}, Average PSNR A: {avg_psnr_A:.4f}')
-        print(f'Epoch: {i}, Average MSE B: {avg_mse_B:.4f}, Average PSNR B: {avg_psnr_B:.4f}')
+        print(f'Epoch: {i},  MSE A: {avg_mse_A:.4f}, PSNR A: {avg_psnr_A:.4f}')
+        print(f'Epoch: {i},  MSE B: {avg_mse_B:.4f}, PSNR B: {avg_psnr_B:.4f}')
 
         save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize)
 
