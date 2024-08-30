@@ -10,6 +10,7 @@ from models import create_model
 from util.visualizer import Visualizer
 from torch.utils.data import DataLoader
 from pytorch_fid import calculate_fid_given_paths
+from util.inception_score import get_inception_score
 
 
 def calculate_mse(real_images, reconstructed_images):
