@@ -4,7 +4,7 @@ import torch
 import matplotlib.pyplot as plt
 import os
 import csv
-from options.test_options import TestOptions  # Assuming you have this module
+from options.test_options import TestOptions  
 from data import create_dataset
 from models import create_model
 from util.visualizer import save_images
@@ -22,6 +22,8 @@ def calculate_psnr(real_images, reconstructed_images):
     real_images = real_images.to(device)
     reconstructed_images = reconstructed_images.to(device)
     mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
+    if mse == 0:
+        return float('inf')  # Avoid division by zero
     psnr = 10 * torch.log10(1 / mse)
     return psnr.item()
 
@@ -93,7 +95,7 @@ if __name__ == '__main__':
     for i, data in enumerate(dataset):
         iter_start_time = time.time()
         model.set_input(data)
-        model.optimize_parameters()
+        model.test()  # Run inference
 
         real_A = data['A'].to(model.device)
         real_B = data['B'].to(model.device)
@@ -116,18 +118,12 @@ if __name__ == '__main__':
         if i >= opt.num_test:  # only apply our model to opt.num_test images.
             break
 
-        model.test()
-        visuals = model.get_current_visuals()
-        img_path = model.get_image_paths()
-        if i % 5 == 0:
-            print('processing (%04d)-th image... %s' % (i, img_path))
-
         # Calculate and store average metrics for the epoch
-        avg_mse_A = np.mean(mse_list_A)
-        avg_psnr_A = np.mean(psnr_list_A)
-        avg_mse_B = np.mean(mse_list_B)
-        avg_psnr_B = np.mean(psnr_list_B)
-        avg_loss = np.mean(model.get_current_losses().values())  # Assuming this returns a dict
+        avg_mse_A = np.mean(mse_list_A) if mse_list_A else 0
+        avg_psnr_A = np.mean(psnr_list_A) if psnr_list_A else 0
+        avg_mse_B = np.mean(mse_list_B) if mse_list_B else 0
+        avg_psnr_B = np.mean(psnr_list_B) if psnr_list_B else 0
+        avg_loss = np.mean(model.get_current_losses().values()) if model.get_current_losses() else 0
         epoch_mse_A.append(avg_mse_A)
         epoch_psnr_A.append(avg_psnr_A)
         epoch_mse_B.append(avg_mse_B)
