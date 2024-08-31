@@ -21,6 +21,8 @@ def calculate_psnr(real_images, reconstructed_images):
     real_images = real_images.to(device)
     reconstructed_images = reconstructed_images.to(device)
     mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
+    if mse == 0:
+        return float('inf')  # Avoid division by zero
     psnr = 10 * torch.log10(1 / mse)
     return psnr.item()
 
@@ -160,7 +162,7 @@ if __name__ == '__main__':
             avg_psnr_A = np.mean(psnr_list_A)
             avg_mse_B = np.mean(mse_list_B)
             avg_psnr_B = np.mean(psnr_list_B)
-            avg_loss = np.mean([losses[k] for k in losses])  # Calculate average loss
+            avg_loss = np.mean([losses[k] for k in losses if k in losses])  # Ensure `losses` has values
             epoch_mse_A.append(avg_mse_A)
             epoch_psnr_A.append(avg_psnr_A)
             epoch_mse_B.append(avg_mse_B)
