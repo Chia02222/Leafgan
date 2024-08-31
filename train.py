@@ -73,10 +73,6 @@ if __name__ == '__main__':
     visualizer = Visualizer(opt)
     total_iters = 0
 
-    mse_list_A = []
-    psnr_list_A = []
-    mse_list_B = []
-    psnr_list_B = []
     epoch_mse_A = []
     epoch_psnr_A = []
     epoch_mse_B = []
@@ -98,9 +94,7 @@ if __name__ == '__main__':
 
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         epoch_start_time = time.time()
-        iter_data_time = time.time()
         epoch_iter = 0
-    
         mse_list_A = []
         psnr_list_A = []
         mse_list_B = []
@@ -108,11 +102,11 @@ if __name__ == '__main__':
 
         for i, data in enumerate(dataset):
             iter_start_time = time.time()
-            if total_iters % opt.print_freq == 0:
-                t_data = iter_start_time - iter_data_time
-            visualizer.reset()
+
+            # Update `total_iters` and `epoch_iter`
             total_iters += opt.batch_size
             epoch_iter += opt.batch_size
+
             model.set_input(data)
             model.optimize_parameters()
 
@@ -124,10 +118,8 @@ if __name__ == '__main__':
             rec_B_key = 'rec_B'
             if rec_A_key in visuals:
                 rec_A = visuals[rec_A_key].to(model.device)
-
                 mse_A = calculate_mse(real_A, rec_A)
                 psnr_A = calculate_psnr(real_A, rec_A)
-
                 mse_list_A.append(mse_A)
                 psnr_list_A.append(psnr_A)
 
@@ -137,16 +129,10 @@ if __name__ == '__main__':
                 if psnr_A > best_psnr_A:
                     best_psnr_A = psnr_A
 
-                if total_iters % opt.print_freq == 0:
-                    print(f'MSE A: {mse_A}')
-                    print(f'PSNR A: {psnr_A}')
-
             if rec_B_key in visuals:
                 rec_B = visuals[rec_B_key].to(model.device)
-
                 mse_B = calculate_mse(real_B, rec_B)
                 psnr_B = calculate_psnr(real_B, rec_B)
-
                 mse_list_B.append(mse_B)
                 psnr_list_B.append(psnr_B)
 
@@ -156,19 +142,10 @@ if __name__ == '__main__':
                 if psnr_B > best_psnr_B:
                     best_psnr_B = psnr_B
 
-                if total_iters % opt.print_freq == 0:
-                    print(f'MSE B: {mse_B}')
-                    print(f'PSNR B: {psnr_B}')
-
-            if total_iters % opt.display_freq == 0:
-                save_result = total_iters % opt.update_html_freq == 0
-                model.compute_visuals()
-                visualizer.display_current_results(model.get_current_visuals(), epoch, save_result)
-
             if total_iters % opt.print_freq == 0:
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
-                print(f'Epoch: {epoch}, Iteration: {epoch_iter}, Losses: {losses}, Time per batch: {t_comp:.4f}s, Data loading time: {t_data:.4f}s')
+                print(f'Epoch: {epoch}, Iteration: {epoch_iter}, Total Iters: {total_iters}, Losses: {losses}, Time per batch: {t_comp:.4f}s')
 
             if total_iters % opt.save_latest_freq == 0:
                 print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
@@ -214,6 +191,5 @@ if __name__ == '__main__':
         f.write(f'Best MSE B: {best_mse_B:.4f}, Best PSNR B: {best_psnr_B:.4f}\n')
         f.write(f'Final MSE A: {final_mse_A:.4f}, Final PSNR A: {final_psnr_A:.4f}\n')
         f.write(f'Final MSE B: {final_mse_B:.4f}, Final PSNR B: {final_psnr_B:.4f}\n')
-
 
     model.update_learning_rate()
