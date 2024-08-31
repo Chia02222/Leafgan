@@ -94,6 +94,7 @@ if __name__ == '__main__':
 
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         epoch_start_time = time.time()
+        epoch_iter = 0
         mse_list_A = []
         psnr_list_A = []
         mse_list_B = []
