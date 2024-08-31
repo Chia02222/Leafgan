@@ -83,6 +83,16 @@ if __name__ == '__main__':
     epoch_psnr_B = []
     epoch_losses = []
 
+    best_mse_A = float('inf')
+    best_psnr_A = -float('inf')
+    best_mse_B = float('inf')
+    best_psnr_B = -float('inf')
+
+    final_mse_A = None
+    final_psnr_A = None
+    final_mse_B = None
+    final_psnr_B = None
+
     checkpoint_dir = 'checkpoints'
     os.makedirs(checkpoint_dir, exist_ok=True)
 
@@ -90,11 +100,6 @@ if __name__ == '__main__':
         epoch_start_time = time.time()
         iter_data_time = time.time()
         epoch_iter = 0
-    
-        real_images_A = []
-        generated_images_A = []
-        real_images_B = []
-        generated_images_B = []
     
         mse_list_A = []
         psnr_list_A = []
@@ -126,6 +131,12 @@ if __name__ == '__main__':
                 mse_list_A.append(mse_A)
                 psnr_list_A.append(psnr_A)
 
+                # Track best metrics for A
+                if mse_A < best_mse_A:
+                    best_mse_A = mse_A
+                if psnr_A > best_psnr_A:
+                    best_psnr_A = psnr_A
+
                 if total_iters % opt.print_freq == 0:
                     print(f'MSE A: {mse_A}')
                     print(f'PSNR A: {psnr_A}')
@@ -138,6 +149,12 @@ if __name__ == '__main__':
 
                 mse_list_B.append(mse_B)
                 psnr_list_B.append(psnr_B)
+
+                # Track best metrics for B
+                if mse_B < best_mse_B:
+                    best_mse_B = mse_B
+                if psnr_B > best_psnr_B:
+                    best_psnr_B = psnr_B
 
                 if total_iters % opt.print_freq == 0:
                     print(f'MSE B: {mse_B}')
@@ -177,6 +194,12 @@ if __name__ == '__main__':
             epoch_psnr_B.append(avg_psnr_B)
             epoch_losses.append(avg_loss)
 
+            # Store final metrics
+            final_mse_A = avg_mse_A
+            final_psnr_A = avg_psnr_A
+            final_mse_B = avg_mse_B
+            final_psnr_B = avg_psnr_B
+
             print(f'Epoch: {epoch}, Average MSE A: {avg_mse_A:.4f}, Average PSNR A: {avg_psnr_A:.4f}')
             print(f'Epoch: {epoch}, Average MSE B: {avg_mse_B:.4f}, Average PSNR B: {avg_psnr_B:.4f}')
 
@@ -184,5 +207,13 @@ if __name__ == '__main__':
 
     save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, checkpoint_dir)
     save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, checkpoint_dir)
+
+    # Save best and final metrics
+    with open(os.path.join(checkpoint_dir, 'best_and_final_metrics.txt'), 'w') as f:
+        f.write(f'Best MSE A: {best_mse_A:.4f}, Best PSNR A: {best_psnr_A:.4f}\n')
+        f.write(f'Best MSE B: {best_mse_B:.4f}, Best PSNR B: {best_psnr_B:.4f}\n')
+        f.write(f'Final MSE A: {final_mse_A:.4f}, Final PSNR A: {final_psnr_A:.4f}\n')
+        f.write(f'Final MSE B: {final_mse_B:.4f}, Final PSNR B: {final_psnr_B:.4f}\n')
+
 
     model.update_learning_rate()
