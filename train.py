@@ -100,7 +100,7 @@ if __name__ == '__main__':
         epoch_start_time = time.time()
         iter_data_time = time.time()
         epoch_iter = 0
-    
+
         mse_list_A = []
         psnr_list_A = []
         mse_list_B = []
@@ -207,11 +207,11 @@ if __name__ == '__main__':
 
         print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
 
-    save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, checkpoint_dir)
-    save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, checkpoint_dir)
+    save_metrics_plot(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, opt.checkpoints_dir)
+    save_metrics_csv(epoch_mse_A, epoch_psnr_A, epoch_mse_B, epoch_psnr_B, epoch_losses, opt.checkpoints_dir)
 
     # Save best and final metrics
-    with open(os.path.join(checkpoint_dir, 'best_and_final_metrics.txt'), 'w') as f:
+    with open(os.path.join(opt.checkpoints_dir, 'best_and_final_metrics.txt'), 'w') as f:
         f.write(f'Best MSE A: {best_mse_A:.4f}, Best PSNR A: {best_psnr_A:.4f}\n')
         f.write(f'Best MSE B: {best_mse_B:.4f}, Best PSNR B: {best_psnr_B:.4f}\n')
         f.write(f'Final MSE A: {final_mse_A:.4f}, Final PSNR A: {final_psnr_A:.4f}\n')
