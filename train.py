@@ -94,7 +94,6 @@ if __name__ == '__main__':
 
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         epoch_start_time = time.time()
-        epoch_iter = 0
         mse_list_A = []
         psnr_list_A = []
         mse_list_B = []
@@ -102,10 +101,6 @@ if __name__ == '__main__':
 
         for i, data in enumerate(dataset):
             iter_start_time = time.time()
-
-            # Update `total_iters` and `epoch_iter`
-            total_iters += opt.batch_size
-            epoch_iter += opt.batch_size
 
             model.set_input(data)
             model.optimize_parameters()
