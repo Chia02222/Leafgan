@@ -102,8 +102,17 @@ if __name__ == '__main__':
         mse_list_B = []
         psnr_list_B = []
 
+        print(f"Epoch {epoch} starting...")  # Debugging line
+
         for i, data in enumerate(dataset):
             iter_start_time = time.time()
+
+            epoch_iter += 1
+            total_iters += 1
+
+            # Debugging lines
+            print(f"Epoch Iter: {epoch_iter}, Total Iters: {total_iters}")
+            print(f"Data keys: {data.keys()}")
 
             model.set_input(data)
             model.optimize_parameters()
@@ -158,11 +167,11 @@ if __name__ == '__main__':
             model.save_networks(epoch)
 
             # Calculate and store average metrics for the epoch
-            avg_mse_A = np.mean(mse_list_A)
-            avg_psnr_A = np.mean(psnr_list_A)
-            avg_mse_B = np.mean(mse_list_B)
-            avg_psnr_B = np.mean(psnr_list_B)
-            avg_loss = np.mean([losses[k] for k in losses if k in losses])  # Ensure `losses` has values
+            avg_mse_A = np.mean(mse_list_A) if mse_list_A else float('nan')
+            avg_psnr_A = np.mean(psnr_list_A) if psnr_list_A else float('nan')
+            avg_mse_B = np.mean(mse_list_B) if mse_list_B else float('nan')
+            avg_psnr_B = np.mean(psnr_list_B) if psnr_list_B else float('nan')
+            avg_loss = np.mean([losses[k] for k in losses if k in losses]) if losses else float('nan')
             epoch_mse_A.append(avg_mse_A)
             epoch_psnr_A.append(avg_psnr_A)
             epoch_mse_B.append(avg_mse_B)
