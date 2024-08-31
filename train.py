@@ -21,8 +21,6 @@ def calculate_psnr(real_images, reconstructed_images):
     real_images = real_images.to(device)
     reconstructed_images = reconstructed_images.to(device)
     mse = torch.nn.functional.mse_loss(real_images, reconstructed_images)
-    if mse == 0:
-        return float('inf')  # Avoid division by zero
     psnr = 10 * torch.log10(1 / mse)
     return psnr.item()
 
@@ -75,6 +73,10 @@ if __name__ == '__main__':
     visualizer = Visualizer(opt)
     total_iters = 0
 
+    mse_list_A = []
+    psnr_list_A = []
+    mse_list_B = []
+    psnr_list_B = []
     epoch_mse_A = []
     epoch_psnr_A = []
     epoch_mse_B = []
@@ -96,24 +98,21 @@ if __name__ == '__main__':
 
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         epoch_start_time = time.time()
+        iter_data_time = time.time()
         epoch_iter = 0
+    
         mse_list_A = []
         psnr_list_A = []
         mse_list_B = []
         psnr_list_B = []
 
-        print(f"Epoch {epoch} starting...")  # Debugging line
-
         for i, data in enumerate(dataset):
             iter_start_time = time.time()
-
-            epoch_iter += 1
-            total_iters += 1
-
-            # Debugging lines
-            print(f"Epoch Iter: {epoch_iter}, Total Iters: {total_iters}")
-            print(f"Data keys: {data.keys()}")
-
+            if total_iters % opt.print_freq == 0:
+                t_data = iter_start_time - iter_data_time
+            visualizer.reset()
+            total_iters += opt.batch_size
+            epoch_iter += opt.batch_size
             model.set_input(data)
             model.optimize_parameters()
 
@@ -125,8 +124,10 @@ if __name__ == '__main__':
             rec_B_key = 'rec_B'
             if rec_A_key in visuals:
                 rec_A = visuals[rec_A_key].to(model.device)
+
                 mse_A = calculate_mse(real_A, rec_A)
                 psnr_A = calculate_psnr(real_A, rec_A)
+
                 mse_list_A.append(mse_A)
                 psnr_list_A.append(psnr_A)
 
@@ -136,10 +137,16 @@ if __name__ == '__main__':
                 if psnr_A > best_psnr_A:
                     best_psnr_A = psnr_A
 
+                if total_iters % opt.print_freq == 0:
+                    print(f'MSE A: {mse_A}')
+                    print(f'PSNR A: {psnr_A}')
+
             if rec_B_key in visuals:
                 rec_B = visuals[rec_B_key].to(model.device)
+
                 mse_B = calculate_mse(real_B, rec_B)
                 psnr_B = calculate_psnr(real_B, rec_B)
+
                 mse_list_B.append(mse_B)
                 psnr_list_B.append(psnr_B)
 
@@ -149,10 +156,21 @@ if __name__ == '__main__':
                 if psnr_B > best_psnr_B:
                     best_psnr_B = psnr_B
 
+                if total_iters % opt.print_freq == 0:
+                    print(f'MSE B: {mse_B}')
+                    print(f'PSNR B: {psnr_B}')
+
+            if total_iters % opt.display_freq == 0:
+                save_result = total_iters % opt.update_html_freq == 0
+                model.compute_visuals()
+                visualizer.display_current_results(model.get_current_visuals(), epoch, save_result)
+
             if total_iters % opt.print_freq == 0:
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
-                print(f'Epoch: {epoch}, Iteration: {epoch_iter}, Total Iters: {total_iters}, Losses: {losses}, Time per batch: {t_comp:.4f}s')
+                visualizer.print_current_losses(epoch, epoch_iter, losses, t_comp, t_data)
+                if opt.display_id > 0:
+                    visualizer.plot_current_losses(epoch, float(epoch_iter) / dataset_size, losses)
 
             if total_iters % opt.save_latest_freq == 0:
                 print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
@@ -167,11 +185,11 @@ if __name__ == '__main__':
             model.save_networks(epoch)
 
             # Calculate and store average metrics for the epoch
-            avg_mse_A = np.mean(mse_list_A) if mse_list_A else float('nan')
-            avg_psnr_A = np.mean(psnr_list_A) if psnr_list_A else float('nan')
-            avg_mse_B = np.mean(mse_list_B) if mse_list_B else float('nan')
-            avg_psnr_B = np.mean(psnr_list_B) if psnr_list_B else float('nan')
-            avg_loss = np.mean([losses[k] for k in losses if k in losses]) if losses else float('nan')
+            avg_mse_A = np.mean(mse_list_A)
+            avg_psnr_A = np.mean(psnr_list_A)
+            avg_mse_B = np.mean(mse_list_B)
+            avg_psnr_B = np.mean(psnr_list_B)
+            avg_loss = np.mean([losses[k] for k in losses])  # Calculate average loss
             epoch_mse_A.append(avg_mse_A)
             epoch_psnr_A.append(avg_psnr_A)
             epoch_mse_B.append(avg_mse_B)
