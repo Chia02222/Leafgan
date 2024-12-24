@@ -8,20 +8,116 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
-from torchvision import models, transforms
 from scipy.linalg import sqrtm
 from skimage.metrics import structural_similarity as ssim
+from sklearn.decomposition import PCA
 import cv2
 from PIL import Image
 
-from sklearn.decomposition import PCA
-import torch
+def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=5):
+    device = real_images.device
+    real_images = real_images.to(device)
+    reconstructed_images = reconstructed_images.to(device)
 
-import numpy as np
-from options.train_options import TrainOptions
-from data import create_dataset
-from models import create_model
-from util.visualizer import Visualizer
+    # Check for sufficient samples
+    if len(real_images) < 10 or len(reconstructed_images) < 10:
+        print("Not enough samples for FID calculation. Need at least 10.")
+        return 0
+
+    real_features = []
+    reconstructed_features = []
+
+    for i in range(0, len(real_images), batch_size):
+        batch_real = real_images[i:i + batch_size]
+        batch_rec = reconstructed_images[i:i + batch_size]
+
+        batch_real_features = []
+        batch_rec_features = []
+
+        for img_real, img_rec in zip(batch_real, batch_rec):
+            img_real_pil = Image.fromarray((img_real.permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
+            img_rec_pil = Image.fromarray((img_rec.permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
+
+            img_real_transformed = transform(img_real_pil).unsqueeze(0).to(device)
+            img_rec_transformed = transform(img_rec_pil).unsqueeze(0).to(device)
+
+            batch_real_features.append(img_real_transformed)
+            batch_rec_features.append(img_rec_transformed)
+
+        real_features.extend(batch_real_features)
+        reconstructed_features.extend(batch_rec_features)
+
+    real_features = torch.cat(real_features, dim=0).view(-1, real_features[0].numel()).cpu().numpy()
+    reconstructed_features = torch.cat(reconstructed_features, dim=0).view(-1, reconstructed_features[0].numel()).cpu().numpy()
+
+    # Apply PCA and calculate FID
+    pca = PCA(n_components=pca_components)
+    real_features_pca = pca.fit_transform(real_features)
+    reconstructed_features_pca = pca.transform(reconstructed_features)
+
+    mu1, sigma1 = np.mean(real_features_pca, axis=0), np.cov(real_features_pca, rowvar=False)
+    mu2, sigma2 = np.mean(reconstructed_features_pca, axis=0), np.cov(reconstructed_features_pca, rowvar=False)
+
+    epsilon = 1e-6
+    sigma1 += epsilon * np.eye(sigma1.shape[0])
+    sigma2 += epsilon * np.eye(sigma2.shape[0])
+
+    fid = np.sum((mu1 - mu2) ** 2) + np.trace(sigma1 + sigma2 - 2 * sqrtm(sigma1 @ sigma2))
+    return fid
+
+def calculate_ssim(real_image, reconstructed_image):
+    # Detach the tensors and convert to NumPy for SSIM calculation
+    real_image = real_image.detach().cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
+    reconstructed_image = reconstructed_image.detach().cpu().numpy().transpose(1, 2, 0)
+    
+    # Convert to 8-bit format for SSIM calculation
+    real_image = (real_image * 255).astype(np.uint8)
+    reconstructed_image = (reconstructed_image * 255).astype(np.uint8)
+
+    # Convert to grayscale
+    real_gray = cv2.cvtColor(real_image, cv2.COLOR_RGB2GRAY)
+    reconstructed_gray = cv2.cvtColor(reconstructed_image, cv2.COLOR_RGB2GRAY)
+
+    # Calculate SSIM between grayscale images
+    return ssim(real_gray, reconstructed_gray)
+
+def save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir):
+    plt.figure()
+    plt.subplot(2, 2, 1)
+    plt.plot(range(len(epoch_fid_A)), epoch_fid_A, label='Average FID A')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average FID A')
+    plt.legend()
+
+    plt.subplot(2, 2, 2)
+    plt.plot(range(len(epoch_ssim_A)), epoch_ssim_A, label='Average SSIM A')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average SSIM A')
+    plt.legend()
+
+    plt.subplot(2, 2, 3)
+    plt.plot(range(len(epoch_fid_B)), epoch_fid_B, label='Average FID B')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average FID B')
+    plt.legend()
+
+    plt.subplot(2, 2, 4)
+    plt.plot(range(len(epoch_ssim_B)), epoch_ssim_B, label='Average SSIM B')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average SSIM B')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(checkpoint_dir, 'metrics_plot.png'))
+    plt.close()
+
+def save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, checkpoint_dir):
+    csv_file = os.path.join(checkpoint_dir, 'metrics.csv')
+    with open(csv_file, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Epoch', 'Average FID A', 'Average SSIM A', 'Average FID B', 'Average SSIM B', 'Loss'])
+        for epoch in range(len(epoch_fid_A)):
+            writer.writerow([epoch + 1, epoch_fid_A[epoch], epoch_ssim_A[epoch], epoch_fid_B[epoch], epoch_ssim_B[epoch], epoch_losses[epoch]])
 
 if __name__ == '__main__':
     # Parse the training options
