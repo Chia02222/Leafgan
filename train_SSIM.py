@@ -50,11 +50,18 @@ def calculate_fid(real_images, reconstructed_images, transform):
     real_features = torch.cat(real_features, dim=0)
     reconstructed_features = torch.cat(reconstructed_features, dim=0)
 
+    # Flatten the features (batch_size, channels, height, width) -> (batch_size, channels * height * width)
+    real_features = real_features.view(real_features.size(0), -1)
+    reconstructed_features = reconstructed_features.view(reconstructed_features.size(0), -1)
+
+    # Compute means and covariance
     mu1, sigma1 = real_features.mean(dim=0), torch.cov(real_features.T)
     mu2, sigma2 = reconstructed_features.mean(dim=0), torch.cov(reconstructed_features.T)
 
+    # FID calculation
     fid = torch.sum((mu1 - mu2) ** 2) + torch.trace(sigma1 + sigma2 - 2 * torch.linalg.sqrtm(sigma1 @ sigma2))
     return fid.item()
+
 
 
 def calculate_ssim(real_image, reconstructed_image):
