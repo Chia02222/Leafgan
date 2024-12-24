@@ -1,17 +1,93 @@
 import time
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 import os
 import csv
-import cv2
-from skimage.metrics import structural_similarity as ssim
-from torchmetrics.image.fid import FrechetInceptionDistance
 from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
+from torchvision import models, transforms
+from scipy.linalg import sqrtm
+from skimage.metrics import structural_similarity as ssim
+import cv2
+from PIL import Image
 
-# Define the function for calculating SSIM
+from sklearn.decomposition import PCA
+import torch
+
+def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=50):
+    """
+    Calculate the FID score between real and reconstructed images.
+    """
+    device = real_images.device
+    real_images = real_images.to(device)
+    reconstructed_images = reconstructed_images.to(device)
+
+    # Convert tensors to numpy and then to PIL images for FID computation
+    real_features = []
+    reconstructed_features = []
+
+    # Define the transformation pipeline for FID computation
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),  # Resize to a smaller size
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    # Loop over batches to avoid OOM errors
+    for i in range(0, len(real_images), batch_size):
+        real_batch = real_images[i:i+batch_size]
+        rec_batch = reconstructed_images[i:i+batch_size]
+        
+        batch_real_features = []
+        batch_rec_features = []
+        
+        for img_real, img_reconstructed in zip(real_batch, rec_batch):
+            # Convert to numpy arrays and then to PIL images
+            img_real_pil = Image.fromarray((img_real.detach().permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
+            img_reconstructed_pil = Image.fromarray((img_reconstructed.detach().permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
+
+            # Apply transformations
+            img_real = transform(img_real_pil).unsqueeze(0).to(device)
+            img_reconstructed = transform(img_reconstructed_pil).unsqueeze(0).to(device)
+
+            # Extract features for FID calculation
+            batch_real_features.append(img_real)
+            batch_rec_features.append(img_reconstructed)
+
+        # Stack features and calculate FID for the batch
+        real_features.extend(batch_real_features)
+        reconstructed_features.extend(batch_rec_features)
+
+    # Stack all features after batch processing
+    real_features = torch.cat(real_features, dim=0)
+    reconstructed_features = torch.cat(reconstructed_features, dim=0)
+
+    # Flatten the features (batch_size, channels, height, width) -> (batch_size, channels * height * width)
+    real_features = real_features.view(real_features.size(0), -1).cpu().numpy()
+    reconstructed_features = reconstructed_features.view(reconstructed_features.size(0), -1).cpu().numpy()
+
+    # Use PCA to reduce dimensionality if needed
+    pca = PCA(n_components=pca_components)
+    real_features_pca = pca.fit_transform(real_features)
+    reconstructed_features_pca = pca.transform(reconstructed_features)
+
+    # Compute means and covariance
+    mu1, sigma1 = real_features_pca.mean(axis=0), torch.cov(torch.tensor(real_features_pca).T)
+    mu2, sigma2 = reconstructed_features_pca.mean(axis=0), torch.cov(torch.tensor(reconstructed_features_pca).T)
+
+    # Handle the case where covariance matrix is degenerate (small batch size)
+    # Add small epsilon to the diagonal for numerical stability
+    epsilon = 1e-6
+    sigma1 += epsilon * torch.eye(sigma1.size(0)).to(device)
+    sigma2 += epsilon * torch.eye(sigma2.size(0)).to(device)
+
+    # FID calculation
+    fid = torch.sum((mu1 - mu2) ** 2) + torch.trace(sigma1 + sigma2 - 2 * torch.linalg.sqrtm(sigma1 @ sigma2))
+    return fid.item()
+
 def calculate_ssim(real_image, reconstructed_image):
     real_image = real_image.cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
     reconstructed_image = reconstructed_image.cpu().numpy().transpose(1, 2, 0)
@@ -21,68 +97,68 @@ def calculate_ssim(real_image, reconstructed_image):
     reconstructed_gray = cv2.cvtColor(reconstructed_image, cv2.COLOR_RGB2GRAY)
     return ssim(real_gray, reconstructed_gray)
 
+def save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir):
+    plt.figure()
+    plt.subplot(2, 2, 1)
+    plt.plot(range(len(epoch_fid_A)), epoch_fid_A, label='Average FID A')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average FID A')
+    plt.legend()
 
-# Define the function for calculating FID
-def calculate_fid(real_images, reconstructed_images, fid_metric, batch_size=8):
-    """
-    Calculate the FID score using torchmetrics' FrechetInceptionDistance.
-    """
-    # Convert the image tensors to uint8 and scale to [0, 255]
-    real_images = (real_images * 255).clamp(0, 255).to(torch.uint8)
-    reconstructed_images = (reconstructed_images * 255).clamp(0, 255).to(torch.uint8)
+    plt.subplot(2, 2, 2)
+    plt.plot(range(len(epoch_ssim_A)), epoch_ssim_A, label='Average SSIM A')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average SSIM A')
+    plt.legend()
 
-    # Ensure the images are of dtype uint8
-    if real_images.dtype != torch.uint8:
-        raise ValueError(f"Expected real_images to be of dtype torch.uint8, but got {real_images.dtype}")
-    if reconstructed_images.dtype != torch.uint8:
-        raise ValueError(f"Expected reconstructed_images to be of dtype torch.uint8, but got {reconstructed_images.dtype}")
+    plt.subplot(2, 2, 3)
+    plt.plot(range(len(epoch_fid_B)), epoch_fid_B, label='Average FID B')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average FID B')
+    plt.legend()
 
-    # Print the dtype and shape of the images to verify
-    print(f"real_images dtype: {real_images.dtype}, shape: {real_images.shape}")
-    print(f"reconstructed_images dtype: {reconstructed_images.dtype}, shape: {reconstructed_images.shape}")
+    plt.subplot(2, 2, 4)
+    plt.plot(range(len(epoch_ssim_B)), epoch_ssim_B, label='Average SSIM B')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average SSIM B')
+    plt.legend()
 
-    # Update the FID metric with the images
-    fid_metric.update(real_images, real=True)
-    fid_metric.update(reconstructed_images, real=False)
+    plt.tight_layout()
+    plt.savefig(os.path.join(checkpoint_dir, 'metrics_plot.png'))
+    plt.close()
 
-    # Compute and return the FID score
-    return fid_metric.compute()
+def save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, checkpoint_dir):
+    csv_file = os.path.join(checkpoint_dir, 'metrics.csv')
+    with open(csv_file, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Epoch', 'Average FID A', 'Average SSIM A', 'Average FID B', 'Average SSIM B', 'Loss'])
+        for epoch in range(len(epoch_fid_A)):
+            writer.writerow([epoch + 1, epoch_fid_A[epoch], epoch_ssim_A[epoch], epoch_fid_B[epoch], epoch_ssim_B[epoch], epoch_losses[epoch]])
 
-# Initialize the FID metric
-fid_metric = FrechetInceptionDistance()
-
-# Inside your training loop:
 if __name__ == '__main__':
-    # Parse the training options
     opt = TrainOptions().parse()
-
-    # Create the dataset and model
     dataset = create_dataset(opt)
     dataset_size = len(dataset)
-    print(f'The number of training images = {dataset_size}')
+    print('The number of training images = %d' % dataset_size)
 
     model = create_model(opt)
     model.setup(opt)
-
-    # Move the model to the correct device (GPU or CPU)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    for param in model.parameters():
-        param.data = param.data.to(device)
-
-    # Initialize the visualizer
     visualizer = Visualizer(opt)
-
-    # Track metrics
     total_iters = 0
+
+    fid_list_A = []
+    ssim_list_A = []
+    fid_list_B = []
+    ssim_list_B = []
     epoch_fid_A = []
     epoch_ssim_A = []
     epoch_fid_B = []
     epoch_ssim_B = []
+    epoch_losses = []
 
     checkpoint_dir = 'checkpoints'
     os.makedirs(checkpoint_dir, exist_ok=True)
 
-    # Training loop
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         epoch_start_time = time.time()
         epoch_iter = 0
@@ -98,18 +174,16 @@ if __name__ == '__main__':
             model.set_input(data)
             model.optimize_parameters()
 
-            # Move inputs to the device
-            real_A = data['A'].to(device)
-            real_B = data['B'].to(device)
+            real_A = data['A'].to(model.device)
+            real_B = data['B'].to(model.device)
             visuals = model.get_current_visuals()
 
             rec_A_key = 'rec_A'
             rec_B_key = 'rec_B'
-
-            # Calculate FID and SSIM for A images
             if rec_A_key in visuals:
-                rec_A = visuals[rec_A_key].to(device)
-                fid_A = calculate_fid(real_A, rec_A, fid_metric)
+                rec_A = visuals[rec_A_key].to(model.device)
+
+                fid_A = calculate_fid(real_A, rec_A, transforms)
                 ssim_A = calculate_ssim(real_A[0], rec_A[0])
 
                 fid_list_A.append(fid_A)
@@ -118,10 +192,10 @@ if __name__ == '__main__':
                 print(f'FID A: {fid_A}')
                 print(f'SSIM A: {ssim_A}')
 
-            # Calculate FID and SSIM for B images
             if rec_B_key in visuals:
-                rec_B = visuals[rec_B_key].to(device)
-                fid_B = calculate_fid(real_B, rec_B, fid_metric)
+                rec_B = visuals[rec_B_key].to(model.device)
+
+                fid_B = calculate_fid(real_B, rec_B, transforms)
                 ssim_B = calculate_ssim(real_B[0], rec_B[0])
 
                 fid_list_B.append(fid_B)
@@ -130,7 +204,6 @@ if __name__ == '__main__':
                 print(f'FID B: {fid_B}')
                 print(f'SSIM B: {ssim_B}')
 
-        # Compute average metrics for this epoch
         avg_fid_A = np.mean(fid_list_A)
         avg_ssim_A = np.mean(ssim_list_A)
         avg_fid_B = np.mean(fid_list_B)
@@ -146,6 +219,5 @@ if __name__ == '__main__':
 
         print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
 
-    # Save metrics plot and CSV
     save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, opt.checkpoints_dir)
-    save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, [], opt.checkpoints_dir)
+    save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, opt.checkpoints_dir)
