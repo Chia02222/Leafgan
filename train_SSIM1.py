@@ -218,9 +218,4 @@ if __name__ == '__main__':
         # Update learning rates at the end of every epoch
         model.update_learning_rate()
 
-        # Save model after every <save_epoch_freq> epochs
-        if epoch % opt.save_epoch_freq == 0:
-            print(f'saving the model at the end of epoch {epoch}, iters {total_iters}')
-            model.save_networks('latest')
-            model.save_networks(epoch)
-
+     
