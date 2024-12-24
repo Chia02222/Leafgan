@@ -14,8 +14,6 @@ from sklearn.decomposition import PCA
 import cv2
 from PIL import Image
 
-checkpoint_dir = 'checkpoints'
-
 def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=5):
     device = real_images.device
     real_images = real_images.to(device)
@@ -131,6 +129,8 @@ if __name__ == '__main__':
     model.setup(opt)  # regular setup: load and print networks; create schedulers
     visualizer = Visualizer(opt)  # create a visualizer that displays/saves images and plots
     total_iters = 0  # the total number of training iterations
+    eckpoint_dir = 'checkpoints'
+    os.makedirs(checkpoint_dir, exist_ok=True)
 
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):  # outer loop for different epochs
         epoch_start_time = time.time()  # timer for the entire epoch
