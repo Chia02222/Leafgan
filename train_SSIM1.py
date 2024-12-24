@@ -203,8 +203,9 @@ if __name__ == '__main__':
         epoch_fid_B.append(avg_fid_B)
         epoch_ssim_B.append(avg_ssim_B)
 
-        # Save metrics plot and CSV
-        save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir)
-        save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, checkpoint_dir)
+        # Save metrics every 10 epochs
+        if epoch % 10 == 0:
+            save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir)
+            save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, checkpoint_dir)
 
         print(f'Epoch {epoch}, FID A: {avg_fid_A}, SSIM A: {avg_ssim_A}, FID B: {avg_fid_B}, SSIM B: {avg_ssim_B}')
