@@ -12,7 +12,7 @@ from models import create_model
 from util.visualizer import Visualizer
 
 # Define the function for calculating SSIM
-def calculate_ssim(real_image, reconstructed_image):
+def calculate_ssim(real_image, reconstructed_image, device):
     real_image = real_image.cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
     reconstructed_image = reconstructed_image.cpu().numpy().transpose(1, 2, 0)
     real_image = (real_image * 255).astype(np.uint8)
@@ -21,15 +21,14 @@ def calculate_ssim(real_image, reconstructed_image):
     reconstructed_gray = cv2.cvtColor(reconstructed_image, cv2.COLOR_RGB2GRAY)
     return ssim(real_gray, reconstructed_gray)
 
-
 # Define the function for calculating FID
-def calculate_fid(real_images, reconstructed_images, fid_metric, batch_size=8):
+def calculate_fid(real_images, reconstructed_images, fid_metric, device, batch_size=8):
     """
     Calculate the FID score using torchmetrics' FrechetInceptionDistance.
     """
     # Convert the image tensors to uint8 and scale to [0, 255]
-    real_images = (real_images * 255).clamp(0, 255).to(torch.uint8)
-    reconstructed_images = (reconstructed_images * 255).clamp(0, 255).to(torch.uint8)
+    real_images = (real_images * 255).clamp(0, 255).to(torch.uint8).to(device)
+    reconstructed_images = (reconstructed_images * 255).clamp(0, 255).to(torch.uint8).to(device)
 
     # Ensure the images are of dtype uint8
     if real_images.dtype != torch.uint8:
@@ -58,8 +57,10 @@ if __name__ == '__main__':
     dataset_size = len(dataset)
     print('The number of training images = %d' % dataset_size)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = create_model(opt)
     model.setup(opt)
+    model.to(device)  # Move model to the correct device
     visualizer = Visualizer(opt)
     total_iters = 0
 
@@ -86,17 +87,17 @@ if __name__ == '__main__':
             model.set_input(data)
             model.optimize_parameters()
 
-            real_A = data['A'].to(model.device)
-            real_B = data['B'].to(model.device)
+            real_A = data['A'].to(device)  # Ensure input tensor is on the correct device
+            real_B = data['B'].to(device)  # Ensure input tensor is on the correct device
             visuals = model.get_current_visuals()
 
             rec_A_key = 'rec_A'
             rec_B_key = 'rec_B'
 
             if rec_A_key in visuals:
-                rec_A = visuals[rec_A_key].to(model.device)
-                fid_A = calculate_fid(real_A, rec_A, fid_metric)
-                ssim_A = calculate_ssim(real_A[0], rec_A[0])
+                rec_A = visuals[rec_A_key].to(device)  # Ensure tensor is on the correct device
+                fid_A = calculate_fid(real_A, rec_A, fid_metric, device)
+                ssim_A = calculate_ssim(real_A[0], rec_A[0], device)
 
                 fid_list_A.append(fid_A)
                 ssim_list_A.append(ssim_A)
@@ -105,9 +106,9 @@ if __name__ == '__main__':
                 print(f'SSIM A: {ssim_A}')
 
             if rec_B_key in visuals:
-                rec_B = visuals[rec_B_key].to(model.device)
-                fid_B = calculate_fid(real_B, rec_B, fid_metric)
-                ssim_B = calculate_ssim(real_B[0], rec_B[0])
+                rec_B = visuals[rec_B_key].to(device)  # Ensure tensor is on the correct device
+                fid_B = calculate_fid(real_B, rec_B, fid_metric, device)
+                ssim_B = calculate_ssim(real_B[0], rec_B[0], device)
 
                 fid_list_B.append(fid_B)
                 ssim_list_B.append(ssim_B)
