@@ -11,22 +11,6 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
 
-# Define the function for calculating FID
-def calculate_fid(real_images, reconstructed_images, fid_metric, batch_size=8):
-    """
-    Calculate the FID score using torchmetrics' FrechetInceptionDistance.
-    """
-    # Ensure the images are in the correct format: scale and convert to uint8
-    real_images = (real_images * 255).clamp(0, 255).to(torch.uint8)
-    reconstructed_images = (reconstructed_images * 255).clamp(0, 255).to(torch.uint8)
-
-    # Update the FID metric with the images
-    fid_metric.update(real_images, real=True)
-    fid_metric.update(reconstructed_images, real=False)
-
-    # Compute and return the FID score
-    return fid_metric.compute()
-
 # Define the function for calculating SSIM
 def calculate_ssim(real_image, reconstructed_image):
     real_image = real_image.cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
@@ -36,6 +20,27 @@ def calculate_ssim(real_image, reconstructed_image):
     real_gray = cv2.cvtColor(real_image, cv2.COLOR_RGB2GRAY)
     reconstructed_gray = cv2.cvtColor(reconstructed_image, cv2.COLOR_RGB2GRAY)
     return ssim(real_gray, reconstructed_gray)
+
+
+# Define the function for calculating FID
+def calculate_fid(real_images, reconstructed_images, fid_metric, batch_size=8):
+    """
+    Calculate the FID score using torchmetrics' FrechetInceptionDistance.
+    """
+    # Ensure the images are in the correct format: scale and convert to uint8
+    real_images = (real_images * 255).clamp(0, 255).to(torch.uint8)
+    reconstructed_images = (reconstructed_images * 255).clamp(0, 255).to(torch.uint8)
+
+    # Check if the image dtype is uint8
+    assert real_images.dtype == torch.uint8, f"Expected dtype=torch.uint8, but got {real_images.dtype}"
+    assert reconstructed_images.dtype == torch.uint8, f"Expected dtype=torch.uint8, but got {reconstructed_images.dtype}"
+
+    # Update the FID metric with the images
+    fid_metric.update(real_images, real=True)
+    fid_metric.update(reconstructed_images, real=False)
+
+    # Compute and return the FID score
+    return fid_metric.compute()
 
 # Initialize the FID metric
 fid_metric = FrechetInceptionDistance()
