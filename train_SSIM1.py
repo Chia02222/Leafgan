@@ -184,6 +184,9 @@ if __name__ == '__main__':
 
         # Calculate FID and SSIM for monitoring progress
         if epoch % 10 == 0:  # Calculate FID/SSIM every 10 epochs (or any preferred interval)
+            # Inside the training loop, after model.compute_visuals()
+            model.compute_visuals()
+            visuals = model.get_current_visuals()  # Get visuals from the model
             real_A = data['A'].to(model.device)
             rec_A = visuals['rec_A'].to(model.device)
             real_B = data['B'].to(model.device)
