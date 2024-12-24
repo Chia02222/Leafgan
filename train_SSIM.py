@@ -152,7 +152,7 @@ if __name__ == '__main__':
             if rec_A_key in visuals:
                 rec_A = visuals[rec_A_key].to(model.device)
 
-                fid_A = calculate_fid(real_A, rec_A, transform)
+                fid_A = calculate_fid(real_A, rec_A, transforms)
                 ssim_A = calculate_ssim(real_A[0], rec_A[0])
 
                 fid_list_A.append(fid_A)
@@ -164,7 +164,7 @@ if __name__ == '__main__':
             if rec_B_key in visuals:
                 rec_B = visuals[rec_B_key].to(model.device)
 
-                fid_B = calculate_fid(real_B, rec_B, transform)
+                fid_B = calculate_fid(real_B, rec_B, transforms)
                 ssim_B = calculate_ssim(real_B[0], rec_B[0])
 
                 fid_list_B.append(fid_B)
