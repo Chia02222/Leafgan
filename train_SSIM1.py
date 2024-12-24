@@ -75,14 +75,23 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     reconstructed_features_pca = pca.transform(reconstructed_features)
 
     # Compute means and covariance
-    mu1, sigma1 = real_features_pca.mean(axis=0), torch.cov(torch.tensor(real_features_pca).T)
-    mu2, sigma2 = reconstructed_features_pca.mean(axis=0), torch.cov(torch.tensor(reconstructed_features_pca).T)
+    mu1, sigma1 = np.mean(real_features_pca, axis=0), np.cov(real_features_pca, rowvar=False)
+    mu2, sigma2 = np.mean(reconstructed_features_pca, axis=0), np.cov(reconstructed_features_pca, rowvar=False)
 
-    # Handle the case where covariance matrix is degenerate (small batch size)
-    # Add small epsilon to the diagonal for numerical stability
+    # Handle case where covariance matrix is degenerate (small batch size)
     epsilon = 1e-6
-    sigma1 += epsilon * torch.eye(sigma1.size(0)).to(device)
-    sigma2 += epsilon * torch.eye(sigma2.size(0)).to(device)
+    if sigma1.ndim == 1:
+        sigma1 = np.expand_dims(sigma1, axis=0)
+    if sigma2.ndim == 1:
+        sigma2 = np.expand_dims(sigma2, axis=0)
+
+    # Add a small identity matrix for numerical stability
+    sigma1 += epsilon * np.eye(sigma1.shape[0])
+    sigma2 += epsilon * np.eye(sigma2.shape[0])
+
+    # Convert back to tensors for FID calculation
+    sigma1 = torch.tensor(sigma1).to(device)
+    sigma2 = torch.tensor(sigma2).to(device)
 
     # FID calculation
     fid = torch.sum((mu1 - mu2) ** 2) + torch.trace(sigma1 + sigma2 - 2 * torch.linalg.sqrtm(sigma1 @ sigma2))
