@@ -8,13 +8,11 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
-from torchvision import models, transforms
 from scipy.linalg import sqrtm
 from skimage.metrics import structural_similarity as ssim
+from sklearn.decomposition import PCA
 import cv2
 from PIL import Image
-from sklearn.decomposition import PCA
-import torch
 
 def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=5):
     device = real_images.device
@@ -83,7 +81,6 @@ def calculate_ssim(real_image, reconstructed_image):
     # Calculate SSIM between grayscale images
     return ssim(real_gray, reconstructed_gray)
 
-
 def save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir):
     plt.figure()
     plt.subplot(2, 2, 1)
@@ -114,7 +111,6 @@ def save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, chec
     plt.savefig(os.path.join(checkpoint_dir, 'metrics_plot.png'))
     plt.close()
 
-
 def save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, checkpoint_dir):
     csv_file = os.path.join(checkpoint_dir, 'metrics.csv')
     with open(csv_file, 'w', newline='') as file:
@@ -122,7 +118,6 @@ def save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch
         writer.writerow(['Epoch', 'Average FID A', 'Average SSIM A', 'Average FID B', 'Average SSIM B', 'Loss'])
         for epoch in range(len(epoch_fid_A)):
             writer.writerow([epoch + 1, epoch_fid_A[epoch], epoch_ssim_A[epoch], epoch_fid_B[epoch], epoch_ssim_B[epoch], epoch_losses[epoch]])
-
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()
@@ -145,7 +140,7 @@ if __name__ == '__main__':
     epoch_ssim_B = []
     epoch_losses = []
 
-    checkpoint_dir = './checkpoints/leafSpot_leafGAN'
+    checkpoint_dir = './checkpoints'
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
@@ -172,30 +167,36 @@ if __name__ == '__main__':
             if rec_A_key in visuals:
                 rec_A = visuals[rec_A_key].to(model.device)
 
-                fid_A = calculate_fid(real_A, rec_A, transforms)
+                # SSIM calculation every epoch
                 ssim_A = calculate_ssim(real_A[0], rec_A[0])
-
-                fid_list_A.append(fid_A)
                 ssim_list_A.append(ssim_A)
 
-                print(f'FID A: {fid_A}')
-                print(f'SSIM A: {ssim_A}')
+                print(f'Epoch {epoch} - SSIM A: {ssim_A}')
 
             if rec_B_key in visuals:
                 rec_B = visuals[rec_B_key].to(model.device)
 
-                fid_B = calculate_fid(real_B, rec_B, transforms)
+                # SSIM calculation every epoch
                 ssim_B = calculate_ssim(real_B[0], rec_B[0])
-
-                fid_list_B.append(fid_B)
                 ssim_list_B.append(ssim_B)
 
-                print(f'FID B: {fid_B}')
-                print(f'SSIM B: {ssim_B}')
+                print(f'Epoch {epoch} - SSIM B: {ssim_B}')
 
-        avg_fid_A = np.mean(fid_list_A)
+        # FID calculation every 10 epochs
+        if epoch % 10 == 0:
+            fid_A = calculate_fid(real_A, rec_A, transform)
+            fid_B = calculate_fid(real_B, rec_B, transform)
+
+            fid_list_A.append(fid_A)
+            fid_list_B.append(fid_B)
+
+            print(f'Epoch {epoch} - FID A: {fid_A}')
+            print(f'Epoch {epoch} - FID B: {fid_B}')
+
+        # Calculate average metrics
+        avg_fid_A = np.mean(fid_list_A) if fid_list_A else None
         avg_ssim_A = np.mean(ssim_list_A)
-        avg_fid_B = np.mean(fid_list_B)
+        avg_fid_B = np.mean(fid_list_B) if fid_list_B else None
         avg_ssim_B = np.mean(ssim_list_B)
 
         epoch_fid_A.append(avg_fid_A)
@@ -203,9 +204,11 @@ if __name__ == '__main__':
         epoch_fid_B.append(avg_fid_B)
         epoch_ssim_B.append(avg_ssim_B)
 
-        # Save metrics every 10 epochs
-        if epoch % 10 == 0:
-            save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir)
-            save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, checkpoint_dir)
+        # Save metrics plot and CSV
+        save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir)
+        save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, checkpoint_dir)
 
-        print(f'Epoch {epoch}, FID A: {avg_fid_A}, SSIM A: {avg_ssim_A}, FID B: {avg_fid_B}, SSIM B: {avg_ssim_B}')
+        print(f'Epoch {epoch} - Average FID A: {avg_fid_A if avg_fid_A is not None else "N/A"}')
+        print(f'Epoch {epoch} - Average SSIM A: {avg_ssim_A}')
+        print(f'Epoch {epoch} - Average FID B: {avg_fid_B if avg_fid_B is not None else "N/A"}')
+        print(f'Epoch {epoch} - Average SSIM B: {avg_ssim_B}')
