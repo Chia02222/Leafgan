@@ -13,7 +13,6 @@ from scipy.linalg import sqrtm
 from skimage.metrics import structural_similarity as ssim
 import cv2
 from PIL import Image
-
 from sklearn.decomposition import PCA
 import torch
 
@@ -69,27 +68,29 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     real_features = real_features.view(real_features.size(0), -1).cpu().numpy()
     reconstructed_features = reconstructed_features.view(reconstructed_features.size(0), -1).cpu().numpy()
 
-    # Check if there are enough samples to compute FID
-    if len(real_features) <= 1 or len(reconstructed_features) <= 1:
-        raise ValueError("Insufficient samples for FID calculation. Ensure there are more than one sample.")
-
     # Use PCA to reduce dimensionality if needed
-    pca = PCA(n_components=pca_components)
-    real_features_pca = pca.fit_transform(real_features)
-    reconstructed_features_pca = pca.transform(reconstructed_features)
+    if len(real_features) > 1 and len(reconstructed_features) > 1:
+        pca = PCA(n_components=pca_components)
+        real_features_pca = pca.fit_transform(real_features)
+        reconstructed_features_pca = pca.transform(reconstructed_features)
 
-    # Compute means and covariance
-    mu1, sigma1 = np.mean(real_features_pca, axis=0), np.cov(real_features_pca, rowvar=False)
-    mu2, sigma2 = np.mean(reconstructed_features_pca, axis=0), np.cov(reconstructed_features_pca, rowvar=False)
+        # Compute means and covariance
+        mu1, sigma1 = np.mean(real_features_pca, axis=0), np.cov(real_features_pca, rowvar=False)
+        mu2, sigma2 = np.mean(reconstructed_features_pca, axis=0), np.cov(reconstructed_features_pca, rowvar=False)
 
-    # Handle the case where covariance matrix is degenerate (small batch size)
-    epsilon = 1e-6
-    sigma1 += epsilon * np.eye(sigma1.shape[0])
-    sigma2 += epsilon * np.eye(sigma2.shape[0])
+        # Handle the case where covariance matrix is degenerate (small batch size)
+        # Add small epsilon to the diagonal for numerical stability
+        epsilon = 1e-6
+        sigma1 += epsilon * np.eye(sigma1.shape[0])
+        sigma2 += epsilon * np.eye(sigma2.shape[0])
 
-    # FID calculation
-    fid = np.sum((mu1 - mu2) ** 2) + np.trace(sigma1 + sigma2 - 2 * sqrtm(sigma1 @ sigma2))
-    return fid
+        # FID calculation
+        fid = np.sum((mu1 - mu2) ** 2) + np.trace(sigma1 + sigma2 - 2 * sqrtm(sigma1 @ sigma2))
+        return fid
+    else:
+        print("Insufficient samples for FID calculation. Returning a default score of 0.")
+        return 0
+
 
 def calculate_ssim(real_image, reconstructed_image):
     real_image = real_image.cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
@@ -99,6 +100,7 @@ def calculate_ssim(real_image, reconstructed_image):
     real_gray = cv2.cvtColor(real_image, cv2.COLOR_RGB2GRAY)
     reconstructed_gray = cv2.cvtColor(reconstructed_image, cv2.COLOR_RGB2GRAY)
     return ssim(real_gray, reconstructed_gray)
+
 
 def save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir):
     plt.figure()
@@ -130,6 +132,7 @@ def save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, chec
     plt.savefig(os.path.join(checkpoint_dir, 'metrics_plot.png'))
     plt.close()
 
+
 def save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, checkpoint_dir):
     csv_file = os.path.join(checkpoint_dir, 'metrics.csv')
     with open(csv_file, 'w', newline='') as file:
@@ -138,11 +141,12 @@ def save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch
         for epoch in range(len(epoch_fid_A)):
             writer.writerow([epoch + 1, epoch_fid_A[epoch], epoch_ssim_A[epoch], epoch_fid_B[epoch], epoch_ssim_B[epoch], epoch_losses[epoch]])
 
+
 if __name__ == '__main__':
     opt = TrainOptions().parse()
     dataset = create_dataset(opt)
     dataset_size = len(dataset)
-    print(f'The number of training images = {dataset_size}')
+    print('The number of training images = %d' % dataset_size)
 
     model = create_model(opt)
     model.setup(opt)
@@ -159,7 +163,7 @@ if __name__ == '__main__':
     epoch_ssim_B = []
     epoch_losses = []
 
-    checkpoint_dir = 'checkpoints'
+    checkpoint_dir = './checkpoints/leafSpot_leafGAN'
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
@@ -186,34 +190,26 @@ if __name__ == '__main__':
             if rec_A_key in visuals:
                 rec_A = visuals[rec_A_key].to(model.device)
 
-                # Check if there are enough samples
-                if len(real_A) > 1 and len(rec_A) > 1:
-                    fid_A = calculate_fid(real_A, rec_A, transforms)
-                    ssim_A = calculate_ssim(real_A[0], rec_A[0])
+                fid_A = calculate_fid(real_A, rec_A, transforms)
+                ssim_A = calculate_ssim(real_A[0], rec_A[0])
 
-                    fid_list_A.append(fid_A)
-                    ssim_list_A.append(ssim_A)
+                fid_list_A.append(fid_A)
+                ssim_list_A.append(ssim_A)
 
-                    print(f'FID A: {fid_A}')
-                    print(f'SSIM A: {ssim_A}')
-                else:
-                    print("Insufficient samples for FID calculation.")
+                print(f'FID A: {fid_A}')
+                print(f'SSIM A: {ssim_A}')
 
             if rec_B_key in visuals:
                 rec_B = visuals[rec_B_key].to(model.device)
 
-                # Check if there are enough samples
-                if len(real_B) > 1 and len(rec_B) > 1:
-                    fid_B = calculate_fid(real_B, rec_B, transforms)
-                    ssim_B = calculate_ssim(real_B[0], rec_B[0])
+                fid_B = calculate_fid(real_B, rec_B, transforms)
+                ssim_B = calculate_ssim(real_B[0], rec_B[0])
 
-                    fid_list_B.append(fid_B)
-                    ssim_list_B.append(ssim_B)
+                fid_list_B.append(fid_B)
+                ssim_list_B.append(ssim_B)
 
-                    print(f'FID B: {fid_B}')
-                    print(f'SSIM B: {ssim_B}')
-                else:
-                    print("Insufficient samples for FID calculation.")
+                print(f'FID B: {fid_B}')
+                print(f'SSIM B: {ssim_B}')
 
         avg_fid_A = np.mean(fid_list_A)
         avg_ssim_A = np.mean(ssim_list_A)
@@ -225,10 +221,8 @@ if __name__ == '__main__':
         epoch_fid_B.append(avg_fid_B)
         epoch_ssim_B.append(avg_ssim_B)
 
-        print(f'Epoch: {epoch}, Average FID A: {avg_fid_A:.4f}, Average SSIM A: {avg_ssim_A:.4f}')
-        print(f'Epoch: {epoch}, Average FID B: {avg_fid_B:.4f}, Average SSIM B: {avg_ssim_B:.4f}')
+        # Save metrics plot and CSV
+        save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir)
+        save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, checkpoint_dir)
 
-        print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
-
-    save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, opt.checkpoints_dir)
-    save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch_losses, opt.checkpoints_dir)
+        print(f'Epoch {epoch}, FID A: {avg_fid_A}, SSIM A: {avg_ssim_A}, FID B: {avg_fid_B}, SSIM B: {avg_ssim_B}')
