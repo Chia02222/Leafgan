@@ -57,8 +57,10 @@ if __name__ == '__main__':
     dataset_size = len(dataset)
     print('The number of training images = %d' % dataset_size)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = create_model(opt)
     model.setup(opt)
+    model.to(device)  # Move model to the correct device
     visualizer = Visualizer(opt)
     total_iters = 0
 
@@ -84,7 +86,9 @@ if __name__ == '__main__':
             epoch_iter += opt.batch_size
             model.set_input(data)
             model.optimize_parameters()
-            
+
+            real_A = data['A'].to(device)  # Ensure input tensor is on the correct device
+            real_B = data['B'].to(device)  # Ensure input tensor is on the correct device
             visuals = model.get_current_visuals()
 
             rec_A_key = 'rec_A'
