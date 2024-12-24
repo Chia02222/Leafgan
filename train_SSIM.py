@@ -14,7 +14,10 @@ from skimage.metrics import structural_similarity as ssim
 import cv2
 from PIL import Image
 
-def calculate_fid(real_images, reconstructed_images, transform, batch_size=8):
+from sklearn.decomposition import PCA
+import torch
+
+def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=50):
     """
     Calculate the FID score between real and reconstructed images.
     """
@@ -63,12 +66,17 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8):
     reconstructed_features = torch.cat(reconstructed_features, dim=0)
 
     # Flatten the features (batch_size, channels, height, width) -> (batch_size, channels * height * width)
-    real_features = real_features.view(real_features.size(0), -1)
-    reconstructed_features = reconstructed_features.view(reconstructed_features.size(0), -1)
+    real_features = real_features.view(real_features.size(0), -1).cpu().numpy()
+    reconstructed_features = reconstructed_features.view(reconstructed_features.size(0), -1).cpu().numpy()
+
+    # Use PCA to reduce dimensionality if needed
+    pca = PCA(n_components=pca_components)
+    real_features_pca = pca.fit_transform(real_features)
+    reconstructed_features_pca = pca.transform(reconstructed_features)
 
     # Compute means and covariance
-    mu1, sigma1 = real_features.mean(dim=0), torch.cov(real_features.T)
-    mu2, sigma2 = reconstructed_features.mean(dim=0), torch.cov(reconstructed_features.T)
+    mu1, sigma1 = real_features_pca.mean(axis=0), torch.cov(torch.tensor(real_features_pca).T)
+    mu2, sigma2 = reconstructed_features_pca.mean(axis=0), torch.cov(torch.tensor(reconstructed_features_pca).T)
 
     # Handle the case where covariance matrix is degenerate (small batch size)
     # Add small epsilon to the diagonal for numerical stability
@@ -79,9 +87,6 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8):
     # FID calculation
     fid = torch.sum((mu1 - mu2) ** 2) + torch.trace(sigma1 + sigma2 - 2 * torch.linalg.sqrtm(sigma1 @ sigma2))
     return fid.item()
-
-
-
 
 def calculate_ssim(real_image, reconstructed_image):
     real_image = real_image.cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
