@@ -22,7 +22,6 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
-from util import calculate_fid, calculate_ssim, save_metrics_plot, save_metrics_csv
 
 if __name__ == '__main__':
     # Parse the training options
