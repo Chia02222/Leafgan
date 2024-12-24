@@ -21,74 +21,56 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     real_images = real_images.to(device)
     reconstructed_images = reconstructed_images.to(device)
 
-    # Convert tensors to numpy and then to PIL images for FID computation
+    # Ensure there are at least 10 samples
+    if len(real_images) < 10 or len(reconstructed_images) < 10:
+        print("Not enough samples for FID calculation. Need at least 10.")
+        return 0  # or you can return None, or skip the calculation
+
     real_features = []
     reconstructed_features = []
 
-    # Define the transformation pipeline for FID computation
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),  # Resize to a smaller size
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
-    # Loop over batches to avoid OOM errors
+    # Processing in batches to avoid memory issues
     for i in range(0, len(real_images), batch_size):
-        real_batch = real_images[i:i+batch_size]
-        rec_batch = reconstructed_images[i:i+batch_size]
-        
+        batch_real = real_images[i:i + batch_size]
+        batch_rec = reconstructed_images[i:i + batch_size]
+
         batch_real_features = []
         batch_rec_features = []
-        
-        for img_real, img_reconstructed in zip(real_batch, rec_batch):
-            # Convert to numpy arrays and then to PIL images
-            img_real_pil = Image.fromarray((img_real.detach().permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
-            img_reconstructed_pil = Image.fromarray((img_reconstructed.detach().permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
 
-            # Apply transformations
-            img_real = transform(img_real_pil).unsqueeze(0).to(device)
-            img_reconstructed = transform(img_reconstructed_pil).unsqueeze(0).to(device)
+        for img_real, img_rec in zip(batch_real, batch_rec):
+            img_real_pil = Image.fromarray((img_real.permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
+            img_rec_pil = Image.fromarray((img_rec.permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
 
-            # Extract features for FID calculation
-            batch_real_features.append(img_real)
-            batch_rec_features.append(img_reconstructed)
+            img_real_transformed = transform(img_real_pil).unsqueeze(0).to(device)
+            img_rec_transformed = transform(img_rec_pil).unsqueeze(0).to(device)
 
-        # Stack features and calculate FID for the batch
+            batch_real_features.append(img_real_transformed)
+            batch_rec_features.append(img_rec_transformed)
+
         real_features.extend(batch_real_features)
         reconstructed_features.extend(batch_rec_features)
 
-    # Stack all features after batch processing
-    real_features = torch.cat(real_features, dim=0)
-    reconstructed_features = torch.cat(reconstructed_features, dim=0)
+    real_features = torch.cat(real_features, dim=0).view(-1, real_features[0].numel()).cpu().numpy()
+    reconstructed_features = torch.cat(reconstructed_features, dim=0).view(-1, reconstructed_features[0].numel()).cpu().numpy()
 
-    # Flatten the features (batch_size, channels, height, width) -> (batch_size, channels * height * width)
-    real_features = real_features.view(real_features.size(0), -1).cpu().numpy()
-    reconstructed_features = reconstructed_features.view(reconstructed_features.size(0), -1).cpu().numpy()
-
-    # Ensure there are enough samples for FID calculation
-    if len(real_features) < 2 or len(reconstructed_features) < 2:
+    # Apply PCA and calculate FID
+    if len(real_features) < 10 or len(reconstructed_features) < 10:
         print("Insufficient samples for FID calculation. Returning a default score of 0.")
         return 0
 
-    # Use PCA to reduce dimensionality if needed
     pca = PCA(n_components=pca_components)
     real_features_pca = pca.fit_transform(real_features)
     reconstructed_features_pca = pca.transform(reconstructed_features)
 
-    # Compute means and covariance
     mu1, sigma1 = np.mean(real_features_pca, axis=0), np.cov(real_features_pca, rowvar=False)
     mu2, sigma2 = np.mean(reconstructed_features_pca, axis=0), np.cov(reconstructed_features_pca, rowvar=False)
 
-    # Handle the case where covariance matrix is degenerate (small batch size)
     epsilon = 1e-6
     sigma1 += epsilon * np.eye(sigma1.shape[0])
     sigma2 += epsilon * np.eye(sigma2.shape[0])
 
-    # FID calculation
     fid = np.sum((mu1 - mu2) ** 2) + np.trace(sigma1 + sigma2 - 2 * sqrtm(sigma1 @ sigma2))
     return fid
-
-
 
 def calculate_ssim(real_image, reconstructed_image):
     # Detach the tensors and convert to NumPy for SSIM calculation
