@@ -70,6 +70,12 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8):
     mu1, sigma1 = real_features.mean(dim=0), torch.cov(real_features.T)
     mu2, sigma2 = reconstructed_features.mean(dim=0), torch.cov(reconstructed_features.T)
 
+    # Handle the case where covariance matrix is degenerate (small batch size)
+    # Add small epsilon to the diagonal for numerical stability
+    epsilon = 1e-6
+    sigma1 += epsilon * torch.eye(sigma1.size(0)).to(device)
+    sigma2 += epsilon * torch.eye(sigma2.size(0)).to(device)
+
     # FID calculation
     fid = torch.sum((mu1 - mu2) ** 2) + torch.trace(sigma1 + sigma2 - 2 * torch.linalg.sqrtm(sigma1 @ sigma2))
     return fid.item()
