@@ -70,7 +70,7 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     reconstructed_features = reconstructed_features.view(reconstructed_features.size(0), -1).cpu().numpy()
 
     # Use PCA to reduce dimensionality if needed
-    pca = PCA(n_components=pca_components)
+    pca = PCA(n_components=min(len(real_features), len(real_features[0]), pca_components))
     real_features_pca = pca.fit_transform(real_features)
     reconstructed_features_pca = pca.transform(reconstructed_features)
 
