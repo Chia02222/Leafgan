@@ -17,9 +17,6 @@ from sklearn.decomposition import PCA
 import torch
 
 def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=50):
-    """
-    Calculate the FID score between real and reconstructed images.
-    """
     device = real_images.device
     real_images = real_images.to(device)
     reconstructed_images = reconstructed_images.to(device)
@@ -68,37 +65,45 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     real_features = real_features.view(real_features.size(0), -1).cpu().numpy()
     reconstructed_features = reconstructed_features.view(reconstructed_features.size(0), -1).cpu().numpy()
 
-    # Use PCA to reduce dimensionality if needed
-    if len(real_features) > 1 and len(reconstructed_features) > 1:
-        pca = PCA(n_components=pca_components)
-        real_features_pca = pca.fit_transform(real_features)
-        reconstructed_features_pca = pca.transform(reconstructed_features)
-
-        # Compute means and covariance
-        mu1, sigma1 = np.mean(real_features_pca, axis=0), np.cov(real_features_pca, rowvar=False)
-        mu2, sigma2 = np.mean(reconstructed_features_pca, axis=0), np.cov(reconstructed_features_pca, rowvar=False)
-
-        # Handle the case where covariance matrix is degenerate (small batch size)
-        # Add small epsilon to the diagonal for numerical stability
-        epsilon = 1e-6
-        sigma1 += epsilon * np.eye(sigma1.shape[0])
-        sigma2 += epsilon * np.eye(sigma2.shape[0])
-
-        # FID calculation
-        fid = np.sum((mu1 - mu2) ** 2) + np.trace(sigma1 + sigma2 - 2 * sqrtm(sigma1 @ sigma2))
-        return fid
-    else:
+    # Ensure there are enough samples for FID calculation
+    if len(real_features) < 2 or len(reconstructed_features) < 2:
         print("Insufficient samples for FID calculation. Returning a default score of 0.")
         return 0
 
+    # Use PCA to reduce dimensionality if needed
+    pca = PCA(n_components=pca_components)
+    real_features_pca = pca.fit_transform(real_features)
+    reconstructed_features_pca = pca.transform(reconstructed_features)
+
+    # Compute means and covariance
+    mu1, sigma1 = np.mean(real_features_pca, axis=0), np.cov(real_features_pca, rowvar=False)
+    mu2, sigma2 = np.mean(reconstructed_features_pca, axis=0), np.cov(reconstructed_features_pca, rowvar=False)
+
+    # Handle the case where covariance matrix is degenerate (small batch size)
+    epsilon = 1e-6
+    sigma1 += epsilon * np.eye(sigma1.shape[0])
+    sigma2 += epsilon * np.eye(sigma2.shape[0])
+
+    # FID calculation
+    fid = np.sum((mu1 - mu2) ** 2) + np.trace(sigma1 + sigma2 - 2 * sqrtm(sigma1 @ sigma2))
+    return fid
+
+
 
 def calculate_ssim(real_image, reconstructed_image):
-    real_image = real_image.cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
-    reconstructed_image = reconstructed_image.cpu().numpy().transpose(1, 2, 0)
+    # Detach the tensors and convert to NumPy for SSIM calculation
+    real_image = real_image.detach().cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
+    reconstructed_image = reconstructed_image.detach().cpu().numpy().transpose(1, 2, 0)
+    
+    # Convert to 8-bit format for SSIM calculation
     real_image = (real_image * 255).astype(np.uint8)
     reconstructed_image = (reconstructed_image * 255).astype(np.uint8)
+
+    # Convert to grayscale
     real_gray = cv2.cvtColor(real_image, cv2.COLOR_RGB2GRAY)
     reconstructed_gray = cv2.cvtColor(reconstructed_image, cv2.COLOR_RGB2GRAY)
+
+    # Calculate SSIM between grayscale images
     return ssim(real_gray, reconstructed_gray)
 
 
