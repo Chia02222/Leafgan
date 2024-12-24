@@ -14,48 +14,41 @@ from skimage.metrics import structural_similarity as ssim
 import cv2
 from PIL import Image
 
-def calculate_fid(real_images, reconstructed_images):
+def calculate_fid(real_images, reconstructed_images, transform):
+    """
+    Calculate the FID score between real and reconstructed images.
+    """
     device = real_images.device
     real_images = real_images.to(device)
     reconstructed_images = reconstructed_images.to(device)
 
-    # Load InceptionV3 model for feature extraction
-    model = models.inception_v3(pretrained=True, transform_input=False).eval().to(device)
-    model.fc = torch.nn.Identity()
-
-    # Resize images for InceptionV3
-    transform = transforms.Compose([
-        transforms.Resize((299, 299)),
-        transforms.ToTensor(),
-        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
-    ])
-
+    # Convert tensors to numpy and then to PIL images for FID computation
     real_features = []
     reconstructed_features = []
 
     for img_real, img_reconstructed in zip(real_images, reconstructed_images):
-        img_real = transform(img_real.permute(1, 2, 0).cpu().numpy()).unsqueeze(0).to(device)
-        img_reconstructed = transform(img_reconstructed.permute(1, 2, 0).cpu().numpy()).unsqueeze(0).to(device)
+        # Convert to numpy arrays and then to PIL images
+        img_real_pil = Image.fromarray((img_real.permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
+        img_reconstructed_pil = Image.fromarray((img_reconstructed.permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
 
-        with torch.no_grad():
-            real_features.append(model(img_real).cpu().numpy().squeeze())
-            reconstructed_features.append(model(img_reconstructed).cpu().numpy().squeeze())
+        # Apply transformations
+        img_real = transform(img_real_pil).unsqueeze(0).to(device)
+        img_reconstructed = transform(img_reconstructed_pil).unsqueeze(0).to(device)
 
-    real_features = np.array(real_features)
-    reconstructed_features = np.array(reconstructed_features)
+        # Extract features for FID calculation
+        real_features.append(img_real)
+        reconstructed_features.append(img_reconstructed)
 
-    mean_real = np.mean(real_features, axis=0)
-    cov_real = np.cov(real_features, rowvar=False)
-    mean_reconstructed = np.mean(reconstructed_features, axis=0)
-    cov_reconstructed = np.cov(reconstructed_features, rowvar=False)
+    # Stack features and calculate FID
+    real_features = torch.cat(real_features, dim=0)
+    reconstructed_features = torch.cat(reconstructed_features, dim=0)
 
-    mean_diff = mean_real - mean_reconstructed
-    cov_sqrt, _ = sqrtm(cov_real.dot(cov_reconstructed), disp=False)
-    if np.iscomplexobj(cov_sqrt):
-        cov_sqrt = cov_sqrt.real
+    mu1, sigma1 = real_features.mean(dim=0), torch.cov(real_features.T)
+    mu2, sigma2 = reconstructed_features.mean(dim=0), torch.cov(reconstructed_features.T)
 
-    fid = np.sum(mean_diff**2) + np.trace(cov_real + cov_reconstructed - 2 * cov_sqrt)
-    return fid
+    fid = torch.sum((mu1 - mu2) ** 2) + torch.trace(sigma1 + sigma2 - 2 * torch.linalg.sqrtm(sigma1 @ sigma2))
+    return fid.item()
+
 
 def calculate_ssim(real_image, reconstructed_image):
     real_image = real_image.cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
