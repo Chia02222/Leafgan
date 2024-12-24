@@ -132,6 +132,3 @@ if __name__ == '__main__':
 
     save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, opt.checkpoints_dir)
     save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, [], opt.checkpoints_dir)
-
-
-remove the fid
