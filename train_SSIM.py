@@ -33,12 +33,6 @@ def calculate_fid(real_images, reconstructed_images, transform):
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-# Compute FID for A
-fid_A = calculate_fid(real_A, rec_A, transform)
-
-# Compute FID for B (if needed)
-fid_B = calculate_fid(real_B, rec_B, transform)
-    
     for img_real, img_reconstructed in zip(real_images, reconstructed_images):
         # Convert to numpy arrays and then to PIL images
         img_real_pil = Image.fromarray((img_real.permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
