@@ -84,9 +84,7 @@ if __name__ == '__main__':
             epoch_iter += opt.batch_size
             model.set_input(data)
             model.optimize_parameters()
-
-            real_A = data['A'].to(device)  # Ensure input tensor is on the correct device
-            real_B = data['B'].to(device)  # Ensure input tensor is on the correct device
+            
             visuals = model.get_current_visuals()
 
             rec_A_key = 'rec_A'
