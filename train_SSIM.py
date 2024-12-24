@@ -14,7 +14,7 @@ from skimage.metrics import structural_similarity as ssim
 import cv2
 from PIL import Image
 
-def calculate_fid(real_images, reconstructed_images, transform):
+def calculate_fid(real_images, reconstructed_images, transform, batch_size=8):
     """
     Calculate the FID score between real and reconstructed images.
     """
@@ -28,25 +28,37 @@ def calculate_fid(real_images, reconstructed_images, transform):
 
     # Define the transformation pipeline for FID computation
     transform = transforms.Compose([
-        transforms.Resize((299, 299)),  # Resize to match InceptionV3 input size
+        transforms.Resize((256, 256)),  # Resize to a smaller size
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    for img_real, img_reconstructed in zip(real_images, reconstructed_images):
-        # Convert to numpy arrays and then to PIL images
-        img_real_pil = Image.fromarray((img_real.detach().permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
-        img_reconstructed_pil = Image.fromarray((img_reconstructed.detach().permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
+    # Loop over batches to avoid OOM errors
+    for i in range(0, len(real_images), batch_size):
+        real_batch = real_images[i:i+batch_size]
+        rec_batch = reconstructed_images[i:i+batch_size]
+        
+        batch_real_features = []
+        batch_rec_features = []
+        
+        for img_real, img_reconstructed in zip(real_batch, rec_batch):
+            # Convert to numpy arrays and then to PIL images
+            img_real_pil = Image.fromarray((img_real.detach().permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
+            img_reconstructed_pil = Image.fromarray((img_reconstructed.detach().permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
 
-        # Apply transformations
-        img_real = transform(img_real_pil).unsqueeze(0).to(device)
-        img_reconstructed = transform(img_reconstructed_pil).unsqueeze(0).to(device)
+            # Apply transformations
+            img_real = transform(img_real_pil).unsqueeze(0).to(device)
+            img_reconstructed = transform(img_reconstructed_pil).unsqueeze(0).to(device)
 
-        # Extract features for FID calculation
-        real_features.append(img_real)
-        reconstructed_features.append(img_reconstructed)
+            # Extract features for FID calculation
+            batch_real_features.append(img_real)
+            batch_rec_features.append(img_reconstructed)
 
-    # Stack features and calculate FID
+        # Stack features and calculate FID for the batch
+        real_features.extend(batch_real_features)
+        reconstructed_features.extend(batch_rec_features)
+
+    # Stack all features after batch processing
     real_features = torch.cat(real_features, dim=0)
     reconstructed_features = torch.cat(reconstructed_features, dim=0)
 
@@ -61,6 +73,7 @@ def calculate_fid(real_images, reconstructed_images, transform):
     # FID calculation
     fid = torch.sum((mu1 - mu2) ** 2) + torch.trace(sigma1 + sigma2 - 2 * torch.linalg.sqrtm(sigma1 @ sigma2))
     return fid.item()
+
 
 
 
