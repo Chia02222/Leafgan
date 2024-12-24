@@ -212,7 +212,7 @@ if __name__ == '__main__':
 
         # Optionally, save FID/SSIM plot and CSV
         save_metrics_plot(fid_list_A, ssim_list_A, fid_list_B, ssim_list_B, checkpoint_dir)
-        save_metrics_csv(fid_list_A, ssim_list_A, fid_list_B, ssim_list_B, checkpoint_dir)
+        save_metrics_csv(fid_list_A, ssim_list_A, fid_list_B, ssim_list_B,epoch_losses, checkpoint_dir)
 
         epoch_end_time = time.time()
         print(f'Epoch {epoch} completed in {epoch_end_time - epoch_start_time:.2f} seconds.')
