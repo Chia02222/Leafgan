@@ -17,7 +17,9 @@ from PIL import Image
 from sklearn.decomposition import PCA
 import torch
 
-def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=50):
+import torchvision.transforms as transforms
+
+def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=50, epsilon=1e-6):
     """
     Calculate the FID score between real and reconstructed images.
     """
@@ -69,6 +71,10 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     real_features = real_features.view(real_features.size(0), -1).cpu().numpy()
     reconstructed_features = reconstructed_features.view(reconstructed_features.size(0), -1).cpu().numpy()
 
+    # Ensure there are enough samples to perform PCA
+    if len(real_features) <= 1 or len(reconstructed_features) <= 1:
+        raise ValueError("Insufficient samples for FID calculation. Ensure there are more than one sample.")
+
     # Use PCA to reduce dimensionality if needed
     pca = PCA(n_components=min(len(real_features), len(real_features[0]), pca_components))
     real_features_pca = pca.fit_transform(real_features)
@@ -79,23 +85,25 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     mu2, sigma2 = np.mean(reconstructed_features_pca, axis=0), np.cov(reconstructed_features_pca, rowvar=False)
 
     # Handle case where covariance matrix is degenerate (small batch size)
-    epsilon = 1e-6
     if sigma1.ndim == 1:
         sigma1 = np.expand_dims(sigma1, axis=0)
     if sigma2.ndim == 1:
         sigma2 = np.expand_dims(sigma2, axis=0)
 
+    # Check for degenerate covariance matrices (if diagonal elements are too small or zero)
+    if np.any(np.isnan(sigma1)) or np.any(np.isnan(sigma2)) or np.any(np.isinf(sigma1)) or np.any(np.isinf(sigma2)):
+        raise ValueError("Covariance matrix contains NaNs or infinities. Check the data quality.")
+
     # Add a small identity matrix for numerical stability
     sigma1 += epsilon * np.eye(sigma1.shape[0])
     sigma2 += epsilon * np.eye(sigma2.shape[0])
 
-    # Convert back to tensors for FID calculation
-    sigma1 = torch.tensor(sigma1).to(device)
-    sigma2 = torch.tensor(sigma2).to(device)
-
     # FID calculation
-    fid = torch.sum((mu1 - mu2) ** 2) + torch.trace(sigma1 + sigma2 - 2 * torch.linalg.sqrtm(sigma1 @ sigma2))
-    return fid.item()
+    fid = np.sum((mu1 - mu2) ** 2) + np.trace(sigma1 + sigma2 - 2 * np.linalg.sqrtm(sigma1 @ sigma2))
+
+    return fid
+
+
 
 def calculate_ssim(real_image, reconstructed_image):
     real_image = real_image.cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
