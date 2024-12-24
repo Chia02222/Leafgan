@@ -35,6 +35,7 @@ def calculate_fid(real_images, reconstructed_images, transform):
 
     for img_real, img_reconstructed in zip(real_images, reconstructed_images):
         # Convert to numpy arrays and then to PIL images
+        img_real_pil = Image.fromarray((img_real.detach().permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
         img_reconstructed_pil = Image.fromarray((img_reconstructed.detach().permute(1, 2, 0).cpu().numpy() * 255).astype('uint8'))
 
         # Apply transformations
