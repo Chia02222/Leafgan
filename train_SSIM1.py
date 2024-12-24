@@ -142,6 +142,7 @@ if __name__ == '__main__':
         ssim_list_A = []
         fid_list_B = []
         ssim_list_B = []
+        epoch_losses = []
         
         for i, data in enumerate(dataset):  # inner loop within one epoch
             iter_start_time = time.time()  # timer for computation per iteration
@@ -198,6 +199,8 @@ if __name__ == '__main__':
             ssim_list_B.append(ssim_B)
             fid_list_A.append(fid_A)
             fid_list_B.append(fid_B)
+            avg_loss = np.mean([losses[k] for k in losses])  # Calculate average loss
+            epoch_losses.append(avg_loss)
 
             print(f'Epoch {epoch} - SSIM A: {ssim_A} - SSIM B: {ssim_B} - FID A: {fid_A} - FID B: {fid_B}')
 
