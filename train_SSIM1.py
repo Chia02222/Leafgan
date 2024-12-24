@@ -27,13 +27,19 @@ def calculate_fid(real_images, reconstructed_images, fid_metric, batch_size=8):
     """
     Calculate the FID score using torchmetrics' FrechetInceptionDistance.
     """
-    # Ensure the images are in the correct format: scale and convert to uint8
+    # Convert the image tensors to uint8 and scale to [0, 255]
     real_images = (real_images * 255).clamp(0, 255).to(torch.uint8)
     reconstructed_images = (reconstructed_images * 255).clamp(0, 255).to(torch.uint8)
 
-    # Check if the image dtype is uint8
-    assert real_images.dtype == torch.uint8, f"Expected dtype=torch.uint8, but got {real_images.dtype}"
-    assert reconstructed_images.dtype == torch.uint8, f"Expected dtype=torch.uint8, but got {reconstructed_images.dtype}"
+    # Ensure the images are of dtype uint8
+    if real_images.dtype != torch.uint8:
+        raise ValueError(f"Expected real_images to be of dtype torch.uint8, but got {real_images.dtype}")
+    if reconstructed_images.dtype != torch.uint8:
+        raise ValueError(f"Expected reconstructed_images to be of dtype torch.uint8, but got {reconstructed_images.dtype}")
+
+    # Print the dtype and shape of the images to verify
+    print(f"real_images dtype: {real_images.dtype}, shape: {real_images.shape}")
+    print(f"reconstructed_images dtype: {reconstructed_images.dtype}, shape: {reconstructed_images.shape}")
 
     # Update the FID metric with the images
     fid_metric.update(real_images, real=True)
