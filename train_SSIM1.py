@@ -16,20 +16,19 @@ from PIL import Image
 from sklearn.decomposition import PCA
 import torch
 
-def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=50):
+def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=5):
     device = real_images.device
     real_images = real_images.to(device)
     reconstructed_images = reconstructed_images.to(device)
 
-    # Ensure there are at least 10 samples
+    # Check for sufficient samples
     if len(real_images) < 10 or len(reconstructed_images) < 10:
         print("Not enough samples for FID calculation. Need at least 10.")
-        return 0  # or you can return None, or skip the calculation
+        return 0
 
     real_features = []
     reconstructed_features = []
 
-    # Processing in batches to avoid memory issues
     for i in range(0, len(real_images), batch_size):
         batch_real = real_images[i:i + batch_size]
         batch_rec = reconstructed_images[i:i + batch_size]
@@ -54,10 +53,6 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     reconstructed_features = torch.cat(reconstructed_features, dim=0).view(-1, reconstructed_features[0].numel()).cpu().numpy()
 
     # Apply PCA and calculate FID
-    if len(real_features) < 10 or len(reconstructed_features) < 10:
-        print("Insufficient samples for FID calculation. Returning a default score of 0.")
-        return 0
-
     pca = PCA(n_components=pca_components)
     real_features_pca = pca.fit_transform(real_features)
     reconstructed_features_pca = pca.transform(reconstructed_features)
