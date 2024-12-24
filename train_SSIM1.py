@@ -129,7 +129,7 @@ if __name__ == '__main__':
     model.setup(opt)  # regular setup: load and print networks; create schedulers
     visualizer = Visualizer(opt)  # create a visualizer that displays/saves images and plots
     total_iters = 0  # the total number of training iterations
-    eckpoint_dir = 'checkpoints'
+    checkpoint_dir = 'checkpoints'
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):  # outer loop for different epochs
