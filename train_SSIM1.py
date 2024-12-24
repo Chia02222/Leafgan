@@ -16,7 +16,7 @@ def calculate_fid(real_images, reconstructed_images, fid_metric, batch_size=8):
     """
     Calculate the FID score using torchmetrics' FrechetInceptionDistance.
     """
-    # Convert images to uint8
+    # Ensure the images are in the correct format: scale and convert to uint8
     real_images = (real_images * 255).clamp(0, 255).to(torch.uint8)
     reconstructed_images = (reconstructed_images * 255).clamp(0, 255).to(torch.uint8)
 
@@ -26,7 +26,6 @@ def calculate_fid(real_images, reconstructed_images, fid_metric, batch_size=8):
 
     # Compute and return the FID score
     return fid_metric.compute()
-
 
 # Define the function for calculating SSIM
 def calculate_ssim(real_image, reconstructed_image):
