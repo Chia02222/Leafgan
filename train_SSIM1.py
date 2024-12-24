@@ -14,6 +14,8 @@ from sklearn.decomposition import PCA
 import cv2
 from PIL import Image
 
+checkpoint_dir = 'checkpoints'
+
 def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=5):
     device = real_images.device
     real_images = real_images.to(device)
@@ -80,7 +82,7 @@ def calculate_ssim(real_image, reconstructed_image):
 
     # Calculate SSIM between grayscale images
     return ssim(real_gray, reconstructed_gray)
-
+    
 def save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir):
     plt.figure()
     plt.subplot(2, 2, 1)
