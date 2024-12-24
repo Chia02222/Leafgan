@@ -57,10 +57,8 @@ if __name__ == '__main__':
     dataset_size = len(dataset)
     print('The number of training images = %d' % dataset_size)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = create_model(opt)
     model.setup(opt)
-    model.to(device)  # Move model to the correct device
     visualizer = Visualizer(opt)
     total_iters = 0
 
