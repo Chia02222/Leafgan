@@ -19,7 +19,6 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     real_images = real_images.to(device)
     reconstructed_images = reconstructed_images.to(device)
 
-    # Check for sufficient samples
     if len(real_images) < 10 or len(reconstructed_images) < 10:
         print("Not enough samples for FID calculation. Need at least 10.")
         return 0
@@ -50,7 +49,6 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     real_features = torch.cat(real_features, dim=0).view(-1, real_features[0].numel()).cpu().numpy()
     reconstructed_features = torch.cat(reconstructed_features, dim=0).view(-1, reconstructed_features[0].numel()).cpu().numpy()
 
-    # Apply PCA and calculate FID
     pca = PCA(n_components=pca_components)
     real_features_pca = pca.fit_transform(real_features)
     reconstructed_features_pca = pca.transform(reconstructed_features)
@@ -66,21 +64,17 @@ def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pc
     return fid
 
 def calculate_ssim(real_image, reconstructed_image):
-    # Detach the tensors and convert to NumPy for SSIM calculation
-    real_image = real_image.detach().cpu().numpy().transpose(1, 2, 0)  # Convert to HxWxC
+    real_image = real_image.detach().cpu().numpy().transpose(1, 2, 0)
     reconstructed_image = reconstructed_image.detach().cpu().numpy().transpose(1, 2, 0)
-    
-    # Convert to 8-bit format for SSIM calculation
+
     real_image = (real_image * 255).astype(np.uint8)
     reconstructed_image = (reconstructed_image * 255).astype(np.uint8)
 
-    # Convert to grayscale
     real_gray = cv2.cvtColor(real_image, cv2.COLOR_RGB2GRAY)
     reconstructed_gray = cv2.cvtColor(reconstructed_image, cv2.COLOR_RGB2GRAY)
 
-    # Calculate SSIM between grayscale images
     return ssim(real_gray, reconstructed_gray)
-    
+
 def save_metrics_plot(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, checkpoint_dir):
     plt.figure()
     plt.subplot(2, 2, 1)
@@ -118,96 +112,76 @@ def save_metrics_csv(epoch_fid_A, epoch_ssim_A, epoch_fid_B, epoch_ssim_B, epoch
         writer.writerow(['Epoch', 'Average FID A', 'Average SSIM A', 'Average FID B', 'Average SSIM B', 'Loss'])
         for epoch in range(len(epoch_fid_A)):
             writer.writerow([epoch + 1, epoch_fid_A[epoch], epoch_ssim_A[epoch], epoch_fid_B[epoch], epoch_ssim_B[epoch], epoch_losses[epoch]])
-            
+
 if __name__ == '__main__':
-    opt = TrainOptions().parse()  # get training options
-    dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
-    dataset_size = len(dataset)  # get the number of images in the dataset
+    opt = TrainOptions().parse()
+    dataset = create_dataset(opt)
+    dataset_size = len(dataset)
     print('The number of training images = %d' % dataset_size)
 
-    model = create_model(opt)  # create a model given opt.model and other options
-    model.setup(opt)  # regular setup: load and print networks; create schedulers
-    visualizer = Visualizer(opt)  # create a visualizer that displays/saves images and plots
-    total_iters = 0  # the total number of training iterations
+    model = create_model(opt)
+    model.setup(opt)
+    visualizer = Visualizer(opt)
+    total_iters = 0
     checkpoint_dir = 'checkpoints'
     os.makedirs(checkpoint_dir, exist_ok=True)
 
-    for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):  # outer loop for different epochs
-        epoch_start_time = time.time()  # timer for the entire epoch
-        iter_data_time = time.time()  # timer for data loading per iteration
-        epoch_iter = 0  # the number of training iterations in the current epoch
+    for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
+        epoch_start_time = time.time()
+        iter_data_time = time.time()
+        epoch_iter = 0
 
-        # Initialize FID/SSIM lists for tracking metrics
-        fid_list_A = []
-        ssim_list_A = []
-        fid_list_B = []
-        ssim_list_B = []
-        epoch_losses = []
-        
-        for i, data in enumerate(dataset):  # inner loop within one epoch
-            iter_start_time = time.time()  # timer for computation per iteration
+        fid_list_A, ssim_list_A, fid_list_B, ssim_list_B, epoch_losses = [], [], [], [], []
+
+        for i, data in enumerate(dataset):
+            iter_start_time = time.time()
             if total_iters % opt.print_freq == 0:
                 t_data = iter_start_time - iter_data_time
             visualizer.reset()
             total_iters += opt.batch_size
             epoch_iter += opt.batch_size
-            model.set_input(data)  # unpack data from dataset and apply preprocessing
-            model.optimize_parameters()  # calculate loss functions, get gradients, update network weights
+            model.set_input(data)
+            model.optimize_parameters()
 
-            # Optionally display the results
-            if total_iters % opt.display_freq == 0:  # display images on visdom and save images to an HTML file
+            if total_iters % opt.display_freq == 0:
                 save_result = total_iters % opt.update_html_freq == 0
                 model.compute_visuals()
                 visualizer.display_current_results(model.get_current_visuals(), epoch, save_result)
 
-            # Optionally print current losses
-            if total_iters % opt.print_freq == 0:  # print training losses and save logging information to the disk
+            if total_iters % opt.print_freq == 0:
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
                 visualizer.print_current_losses(epoch, epoch_iter, losses, t_comp, t_data)
                 if opt.display_id > 0:
                     visualizer.plot_current_losses(epoch, float(epoch_iter) / dataset_size, losses)
 
-            # Save the latest model every <save_latest_freq> iterations
-            if total_iters % opt.save_latest_freq == 0:
-                print('saving the latest model (epoch %d, total_iters %d)' % (epoch, total_iters))
-                save_suffix = 'iter_%d' % total_iters if opt.save_by_iter else 'latest'
-                model.save_networks(save_suffix)
-
             iter_data_time = time.time()
 
-        # Cache the model at the end of every epoch
-        if epoch % opt.save_epoch_freq == 0:
-            print('saving the model at the end of epoch %d, iters %d' % (epoch, total_iters))
-            model.save_networks('latest')
-            model.save_networks(epoch)
+        model.compute_visuals()
+        visuals = model.get_current_visuals()
+        real_A = data['A'].to(model.device)
+        rec_A = visuals['rec_A'].to(model.device)
+        real_B = data['B'].to(model.device)
+        rec_B = visuals['rec_B'].to(model.device)
 
-        # Calculate FID and SSIM for monitoring progress
-        if epoch % 10 == 0:  # Calculate FID/SSIM every 10 epochs (or any preferred interval)
-            # Inside the training loop, after model.compute_visuals()
-            model.compute_visuals()
-            visuals = model.get_current_visuals()  # Get visuals from the model
-            real_A = data['A'].to(model.device)
-            rec_A = visuals['rec_A'].to(model.device)
-            real_B = data['B'].to(model.device)
-            rec_B = visuals['rec_B'].to(model.device)
+        ssim_A = calculate_ssim(real_A[0], rec_A[0])
+        ssim_B = calculate_ssim(real_B[0], rec_B[0])
+        ssim_list_A.append(ssim_A)
+        ssim_list_B.append(ssim_B)
 
-            # Compute SSIM (example function provided earlier in the script)
-            ssim_A = calculate_ssim(real_A[0], rec_A[0])
-            ssim_B = calculate_ssim(real_B[0], rec_B[0])
+        avg_loss = np.mean([losses[k] for k in losses])
+        epoch_losses.append(avg_loss)
+
+        print(f'Epoch {epoch} - SSIM A: {ssim_A} - SSIM B: {ssim_B}')
+
+        if epoch % opt.fid_interval == 0:
             fid_A = calculate_fid(real_A, rec_A, transform)
             fid_B = calculate_fid(real_B, rec_B, transform)
-
-            ssim_list_A.append(ssim_A)
-            ssim_list_B.append(ssim_B)
             fid_list_A.append(fid_A)
             fid_list_B.append(fid_B)
-            avg_loss = np.mean([losses[k] for k in losses])  # Calculate average loss
-            epoch_losses.append(avg_loss)
 
-            print(f'Epoch {epoch} - SSIM A: {ssim_A} - SSIM B: {ssim_B} - FID A: {fid_A} - FID B: {fid_B}')
+            print(f'Epoch {epoch} - FID A: {fid_A} - FID B: {fid_B}')
 
-        # Average FID and SSIM for the current epoch
         avg_ssim_A = np.mean(ssim_list_A) if ssim_list_A else None
         avg_ssim_B = np.mean(ssim_list_B) if ssim_list_B else None
         avg_fid_A = np.mean(fid_list_A) if fid_list_A else None
@@ -216,14 +190,10 @@ if __name__ == '__main__':
         print(f'Epoch {epoch} - Average SSIM A: {avg_ssim_A} - Average SSIM B: {avg_ssim_B}')
         print(f'Epoch {epoch} - Average FID A: {avg_fid_A} - Average FID B: {avg_fid_B}')
 
-        # Optionally, save FID/SSIM plot and CSV
         save_metrics_plot(fid_list_A, ssim_list_A, fid_list_B, ssim_list_B, checkpoint_dir)
-        save_metrics_csv(fid_list_A, ssim_list_A, fid_list_B, ssim_list_B,epoch_losses, checkpoint_dir)
+        save_metrics_csv(fid_list_A, ssim_list_A, fid_list_B, ssim_list_B, epoch_losses, checkpoint_dir)
 
         epoch_end_time = time.time()
         print(f'Epoch {epoch} completed in {epoch_end_time - epoch_start_time:.2f} seconds.')
 
-        # Update learning rates at the end of every epoch
         model.update_learning_rate()
-
-     
