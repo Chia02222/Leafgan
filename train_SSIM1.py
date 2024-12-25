@@ -4,6 +4,7 @@ import torch
 import matplotlib.pyplot as plt
 import os
 import csv
+import cv2
 from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
@@ -11,8 +12,15 @@ from util.visualizer import Visualizer
 from scipy.linalg import sqrtm
 from skimage.metrics import structural_similarity as ssim
 from sklearn.decomposition import PCA
-import cv2
+from torchvision import transforms  # Add this import for transforms
 from PIL import Image
+
+# Define transformation pipeline
+transform = transforms.Compose([
+    transforms.Resize((256, 256)),  # Resize images to a fixed size
+    transforms.ToTensor(),          # Convert to Tensor
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize to [-1, 1]
+])
 
 def calculate_fid(real_images, reconstructed_images, transform, batch_size=8, pca_components=5):
     device = real_images.device
