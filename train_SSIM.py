@@ -8,7 +8,7 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
-from pytorch_msssim import ssim
+from skimage.metrics import structural_similarity as ssim
 
 def calculate_ssim(real_images, reconstructed_images):
     device = real_images.device
