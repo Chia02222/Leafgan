@@ -10,12 +10,17 @@ from models import create_model
 from util.visualizer import Visualizer
 from skimage.metrics import structural_similarity as ssim
 
-def calculate_ssim(real_images, reconstructed_images):
-    device = real_images.device
-    real_images = real_images.to(device)
-    reconstructed_images = reconstructed_images.to(device)
-    ssim_score = ssim(real_images, reconstructed_images, data_range=1.0, size_average=True)
-    return ssim_score.item()
+def calculate_ssim(real_image, reconstructed_image):
+    real_image = real_image.detach().cpu().numpy().transpose(1, 2, 0)
+    reconstructed_image = reconstructed_image.detach().cpu().numpy().transpose(1, 2, 0)
+
+    real_image = (real_image * 255).astype(np.uint8)
+    reconstructed_image = (reconstructed_image * 255).astype(np.uint8)
+
+    real_gray = cv2.cvtColor(real_image, cv2.COLOR_RGB2GRAY)
+    reconstructed_gray = cv2.cvtColor(reconstructed_image, cv2.COLOR_RGB2GRAY)
+
+    return ssim(real_gray, reconstructed_gray)
 
 def calculate_psnr(real_images, reconstructed_images):
     device = real_images.device
