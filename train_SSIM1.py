@@ -163,6 +163,12 @@ if __name__ == '__main__':
                 if opt.display_id > 0:
                     visualizer.plot_current_losses(epoch, float(epoch_iter) / dataset_size, losses)
 
+            if total_iters % opt.save_latest_freq == 0:
+                print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
+                save_suffix = f'iter_{total_iters}' if opt.save_by_iter else 'latest'
+                model.save_networks(save_suffix)
+
+
             iter_data_time = time.time()
 
         model.compute_visuals()
@@ -189,19 +195,24 @@ if __name__ == '__main__':
             fid_list_B.append(fid_B)
 
             print(f'Epoch {epoch} - FID A: {fid_A} - FID B: {fid_B}')
+            
+        if epoch % opt.save_epoch_freq == 0:
+            print(f'Saving the model at the end of epoch {epoch}, iters {total_iters}')
+            model.save_networks('latest')
+            model.save_networks(epoch)
+            
+            avg_ssim_A = np.mean(ssim_list_A) if ssim_list_A else None
+            avg_ssim_B = np.mean(ssim_list_B) if ssim_list_B else None
+            avg_fid_A = np.mean(fid_list_A) if fid_list_A else None
+            avg_fid_B = np.mean(fid_list_B) if fid_list_B else None
 
-        avg_ssim_A = np.mean(ssim_list_A) if ssim_list_A else None
-        avg_ssim_B = np.mean(ssim_list_B) if ssim_list_B else None
-        avg_fid_A = np.mean(fid_list_A) if fid_list_A else None
-        avg_fid_B = np.mean(fid_list_B) if fid_list_B else None
-
-        print(f'Epoch {epoch} - Average SSIM A: {avg_ssim_A} - Average SSIM B: {avg_ssim_B}')
-        print(f'Epoch {epoch} - Average FID A: {avg_fid_A} - Average FID B: {avg_fid_B}')
-
-        save_metrics_plot(fid_list_A, ssim_list_A, fid_list_B, ssim_list_B, checkpoint_dir)
-        save_metrics_csv(fid_list_A, ssim_list_A, fid_list_B, ssim_list_B, epoch_losses, checkpoint_dir)
+            print(f'Epoch {epoch} - Average SSIM A: {avg_ssim_A} - Average SSIM B: {avg_ssim_B}')
+            print(f'Epoch {epoch} - Average FID A: {avg_fid_A} - Average FID B: {avg_fid_B}')
 
         epoch_end_time = time.time()
         print(f'Epoch {epoch} completed in {epoch_end_time - epoch_start_time:.2f} seconds.')
 
-        model.update_learning_rate()
+    save_metrics_plot(fid_list_A, ssim_list_A, fid_list_B, ssim_list_B, checkpoint_dir)
+    save_metrics_csv(fid_list_A, ssim_list_A, fid_list_B, ssim_list_B, epoch_losses, checkpoint_dir)
+    
+    model.update_learning_rate()
