@@ -148,6 +148,10 @@ if __name__ == '__main__':
                 if psnr_A > best_psnr_A:
                     best_psnr_A = psnr_A
 
+                if total_iters % opt.print_freq == 0:
+                    print(f'SSIM A: {ssim_A}')
+                    print(f'PSNR A: {psnr_A}')
+
             if rec_B_key in visuals:
                 rec_B = visuals[rec_B_key].to(model.device)
 
@@ -163,6 +167,9 @@ if __name__ == '__main__':
                 if psnr_B > best_psnr_B:
                     best_psnr_B = psnr_B
 
+                if total_iters % opt.print_freq == 0:
+                    print(f'SSIM B: {ssim_B}')
+                    print(f'PSNR B: {psnr_B}')
 
             if total_iters % opt.display_freq == 0:
                 save_result = total_iters % opt.update_html_freq == 0
@@ -180,6 +187,7 @@ if __name__ == '__main__':
                 print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
                 save_suffix = f'iter_{total_iters}' if opt.save_by_iter else 'latest'
                 model.save_networks(save_suffix)
+
             iter_data_time = time.time()
 
         if epoch % opt.save_epoch_freq == 0:
@@ -205,8 +213,9 @@ if __name__ == '__main__':
             final_ssim_B = avg_ssim_B
             final_psnr_B = avg_psnr_B
 
-        print(f'Epoch: {epoch}, Average SSIM A: {avg_ssim_A:.4f}, Average PSNR A: {avg_psnr_A:.4f}')
-        print(f'Epoch: {epoch}, Average SSIM B: {avg_ssim_B:.4f}, Average PSNR B: {avg_psnr_B:.4f}')
+            print(f'Epoch: {epoch}, Average SSIM A: {avg_ssim_A:.4f}, Average PSNR A: {avg_psnr_A:.4f}')
+            print(f'Epoch: {epoch}, Average SSIM B: {avg_ssim_B:.4f}, Average PSNR B: {avg_psnr_B:.4f}')
+
         print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
 
     save_metrics_plot(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, epoch_losses, opt.checkpoints_dir)
