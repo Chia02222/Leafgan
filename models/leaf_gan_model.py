@@ -114,25 +114,22 @@ class LeafGANModel(BaseModel):
 			self.optimizers.append(self.optimizer_D)
 
 	# Get the binary mask of the "full leaf" area
-	def get_masking(self, tensor, threshold):
-		with torch.enable_grad():
-			probs, idx = self.netLFLSeg.forward(tensor)
-			self.netLFLSeg.backward(idx=0) # 0 for getting heatmap for "fully_leaf" class
+	def get_masking_from_dataset(self, mask_path):
+		
+   	 	# Load precomputed binary mask
+   		 mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)  # Read in grayscale
+   		 mask = mask / 255.0  # Normalize to range [0, 1]
 
-		heat_map = self.netLFLSeg.generate(target_layer='layer4.2') # 'layer4.2' is the best for our experiment
-		heat_map = cv2.resize(heat_map, dsize=(self.opt.crop_size, self.opt.crop_size))
+    		# Create foreground and background masks
+    		background_mask = 1.0 - mask
+    		foreground_mask = mask
 
-		background_mask = np.absolute(1.0-(heat_map>=threshold))
-		background_mask = np.stack((background_mask, background_mask, background_mask), axis=2)
+		# Convert to PyTorch tensors and adjust dimensions
+		background_mask = torch.from_numpy(background_mask).float().unsqueeze(0).unsqueeze(0).to(self.device)
+		foreground_mask = torch.from_numpy(foreground_mask).float().unsqueeze(0).unsqueeze(0).to(self.device)
 
-		foreground_mask =  heat_map>=threshold
-		foreground_mask = np.stack((foreground_mask, foreground_mask, foreground_mask), axis=2)
+    		return background_mask, foreground_mask
 
-		# from numpy image: H x W x C to torch image: C x H x W
-		background_mask = background_mask.astype(np.float32).transpose(2,0,1)
-		foreground_mask = foreground_mask.astype(np.float32).transpose(2,0,1)
-
-		return torch.from_numpy(background_mask).unsqueeze(0).to(self.device), torch.from_numpy(foreground_mask).unsqueeze(0).to(self.device)
 
 	def to_numpy(self, tensor):
 		img = tensor.data
