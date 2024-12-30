@@ -109,27 +109,35 @@ class LeafGANModel(BaseModel):
 			self.optimizers.append(self.optimizer_G)
 			self.optimizers.append(self.optimizer_D)
 
-	# Get the binary mask of the "full leaf" area
 	def get_yolo_mask(self, image):
-	        """
-	        Generate segmentation mask using YOLOv5.
-	        Parameters:
-	            image: Input image (Tensor or numpy array)
-	        Returns:
-	            foreground_mask, background_mask: Masks as PyTorch tensors
-	        """
-	        results = self.yolov5_model.predict(image)  # Run YOLOv5 prediction
-	        masks = results.masks  # Extract masks if available
-	        if masks is None:
-	            raise ValueError("No masks detected by YOLOv5")
+	    	"""
+	    	Generate segmentation mask using YOLOv5 with optimized memory usage.
+	    	Parameters:
+	        	image: Input image (Tensor or numpy array)
+	    	Returns:
+	        	foreground_mask, background_mask: Masks as PyTorch tensors
+	    	"""
+	    	results = self.yolov5_model.predict(image)  # Run YOLOv5 prediction
+	    	masks = results.masks  # Extract masks if available
 	
-	         # Assuming single object detection for simplicity
-	        mask = masks[0]  # Take the first mask
-	        mask = mask.astype(np.float32) / 255.0  # Normalize mask
-	        foreground_mask = torch.from_numpy(mask).unsqueeze(0).unsqueeze(0).to(self.device)
-	        background_mask = 1.0 - foreground_mask
-	        return foreground_mask, background_mask
-		
+	    	if masks is None or len(masks) == 0:
+	       		raise ValueError("No masks detected by YOLOv5")
+	
+	    	# Assuming single object detection, resize mask to reduce memory usage
+	    	mask = masks[0]  # Take the first mask
+	    	mask = cv2.resize(mask, (mask.shape[1] // 2, mask.shape[0] // 2), interpolation=cv2.INTER_LINEAR)  # Downscale mask
+	    	mask = mask.astype(np.float32) / 255.0  # Normalize mask to [0, 1]
+	    
+	    	# Convert to PyTorch tensor
+	    	foreground_mask = torch.from_numpy(mask).unsqueeze(0).unsqueeze(0).to(self.device, non_blocking=True)
+	    	background_mask = 1.0 - foreground_mask
+	
+	    	# Clear intermediate variables to free memory
+	    	del mask, masks, results
+	    	torch.cuda.empty_cache()
+	
+	    	return foreground_mask, background_mask
+
 	def to_numpy(self, tensor):
 		img = tensor.data
 		image_numpy = img[0].cpu().float().numpy()
