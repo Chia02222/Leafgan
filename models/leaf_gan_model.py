@@ -115,25 +115,26 @@ class LeafGANModel(BaseModel):
 			self.optimizer_D = torch.optim.Adam(itertools.chain(self.netD_A.parameters(), self.netD_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
 			self.optimizers.append(self.optimizer_G)
 			self.optimizers.append(self.optimizer_D)
-    def get_yolo_mask(self, image):
-        """
-        Generate segmentation mask using YOLOv5.
-        Parameters:
-            image: Input image (Tensor or numpy array)
-        Returns:
-            foreground_mask, background_mask: Masks as PyTorch tensors
-        """
-        results = self.yolov5_model.predict(image)  # Run YOLOv5 prediction
-        masks = results.masks  # Extract masks if available
-        if masks is None:
-            raise ValueError("No masks detected by YOLOv5")
-
-         # Assuming single object detection for simplicity
-        mask = masks[0]  # Take the first mask
-        mask = mask.astype(np.float32) / 255.0  # Normalize mask
-        foreground_mask = torch.from_numpy(mask).unsqueeze(0).unsqueeze(0).to(self.device)
-        background_mask = 1.0 - foreground_mask
-        return foreground_mask, background_mask
+			
+   	 def get_yolo_mask(self, image):
+	        """
+	        Generate segmentation mask using YOLOv5.
+	        Parameters:
+	            image: Input image (Tensor or numpy array)
+	        Returns:
+	            foreground_mask, background_mask: Masks as PyTorch tensors
+	        """
+	        results = self.yolov5_model.predict(image)  # Run YOLOv5 prediction
+	        masks = results.masks  # Extract masks if available
+	        if masks is None:
+	            raise ValueError("No masks detected by YOLOv5")
+	
+	         # Assuming single object detection for simplicity
+	        mask = masks[0]  # Take the first mask
+	        mask = mask.astype(np.float32) / 255.0  # Normalize mask
+	        foreground_mask = torch.from_numpy(mask).unsqueeze(0).unsqueeze(0).to(self.device)
+	        background_mask = 1.0 - foreground_mask
+	        return foreground_mask, background_mask
 
 	def to_numpy(self, tensor):
 		img = tensor.data
