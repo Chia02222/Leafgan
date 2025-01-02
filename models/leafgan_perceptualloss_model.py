@@ -243,8 +243,8 @@ class LeafGANModel(BaseModel):
 		self.loss_background_B = self.criterionBackground(self.back_fake_A, self.back_real_B) * lambda_B * lambda_idt
 
 	    	# Compute perceptual loss
-	    	self.loss_perceptual_A = self.criterionPerceptual(self.fore_fake_B, self.fore_real_A) * self.lambda_perceptual
-	    	self.loss_perceptual_B = self.criterionPerceptual(self.fore_fake_A, self.fore_real_B) * self.lambda_perceptual
+		self.loss_perceptual_A = self.criterionPerceptual(self.fore_fake_B, self.fore_real_A) * self.lambda_perceptual
+		self.loss_perceptual_B = self.criterionPerceptual(self.fore_fake_A, self.fore_real_B) * self.lambda_perceptual
     
 		# combined loss and calculate gradients
 		self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_background_A + self.loss_background_B+ self.loss_perceptual_A + self.loss_perceptual_B
