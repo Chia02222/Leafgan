@@ -48,7 +48,7 @@ class VGGPerceptualLoss(nn.Module):
             loss += weight * self.criterion(x, y)
         return loss
 
-class LeafGANModel(BaseModel):
+class leafganperceptuallossmodel(BaseModel):
 	"""
 	This class implements the LeafGAN model, for generating high-quality and diversity disease images from healthy.
 	LeafGAN is basically an improved version of CycleGAN with the attention mechanism to focus on translating leaf area only.
