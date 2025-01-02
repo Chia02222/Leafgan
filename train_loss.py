@@ -153,7 +153,9 @@ if __name__ == '__main__':
             model.optimize_parameters()
 
             current_losses = model.get_current_losses()
-            for key in losses.keys():
+            for key in current_losses.keys():
+                if key not in losses:
+                    losses[key] = []  # Initialize the list if it doesn't exist
                 losses[key].append(current_losses[key])
 
             real_A = data['A'].to(model.device)
