@@ -117,7 +117,7 @@ if __name__ == '__main__':
     epoch_psnr_A = []
     epoch_ssim_B = []
     epoch_psnr_B = []
-    losses = {'D_A': [], 'D_B': [], 'G_A': [], 'G_B': [], 'cycle_A': [], 'cycle_B': [], 'idt_A': [], 'idt_B': []}
+    losses = {'D_A': [], 'D_B': [], 'G_A': [], 'G_B': [], 'cycle_A': [], 'cycle_B': [], 'idt_A': [], 'idt_B': [], 'perceptual_A': [], 'perceptual_B': []}
 
     best_ssim_A = -float('inf')
     best_psnr_A = -float('inf')
