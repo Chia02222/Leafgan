@@ -151,12 +151,15 @@ if __name__ == '__main__':
             epoch_iter += opt.batch_size
             model.set_input(data)
             model.optimize_parameters()
-
-            current_losses = model.get_current_losses()
+            
             for key in current_losses.keys():
+                print(f"Type of losses[{key}]: {type(losses.get(key))}")
+                print(f"Type of current_losses[{key}]: {type(current_losses[key])}")
+    
                 if key not in losses:
                     losses[key] = []  # Initialize the list if it doesn't exist
                 losses[key].append(current_losses[key])
+
 
             real_A = data['A'].to(model.device)
             real_B = data['B'].to(model.device)
