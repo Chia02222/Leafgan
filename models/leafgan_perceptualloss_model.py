@@ -61,7 +61,7 @@ class LeafGANModel(BaseModel):
 			parser.add_argument('--lambda_A', type=float, default=10.0, help='weight for cycle loss (A -> B -> A)')
 			parser.add_argument('--lambda_B', type=float, default=10.0, help='weight for cycle loss (B -> A -> B)')
 			parser.add_argument('--lambda_identity', type=float, default=0.5, help='use identity mapping. Setting lambda_identity other than 0 has an effect of scaling the weight of the identity mapping loss. For example, if the weight of the identity loss should be 10 times smaller than the weight of the reconstruction loss, please set lambda_identity = 0.1')
-      parser.add_argument('--lambda_perceptual', type=float, default=1.0, help='perceptual loss weight')
+      			parser.add_argument('--lambda_perceptual', type=float, default=1.0, help='perceptual loss weight')
 		return parser
 
 	def __init__(self, opt):
@@ -242,9 +242,9 @@ class LeafGANModel(BaseModel):
 		# Backward background loss
 		self.loss_background_B = self.criterionBackground(self.back_fake_A, self.back_real_B) * lambda_B * lambda_idt
 
-    # Compute perceptual loss
-    self.loss_perceptual_A = self.criterionPerceptual(self.fore_fake_B, self.fore_real_A) * self.lambda_perceptual
-    self.loss_perceptual_B = self.criterionPerceptual(self.fore_fake_A, self.fore_real_B) * self.lambda_perceptual
+	    	# Compute perceptual loss
+	    	self.loss_perceptual_A = self.criterionPerceptual(self.fore_fake_B, self.fore_real_A) * self.lambda_perceptual
+	    	self.loss_perceptual_B = self.criterionPerceptual(self.fore_fake_A, self.fore_real_B) * self.lambda_perceptual
     
 		# combined loss and calculate gradients
 		self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_background_A + self.loss_background_B+ self.loss_perceptual_A + self.loss_perceptual_B
