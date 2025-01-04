@@ -148,7 +148,7 @@ class leafganperceptuallossmodel(BaseModel):
                                 self.background_real_A = torch.absolute(1.0 - self.foreground_real_A)
                                 self.background_real_B = torch.absolute(1.0 - self.foreground_real_B)
 
-# To save the segmented results, use save_image
+				# To save the segmented results, use save_image
 				# self.save_image(self.background_real_A, 'saved_img/masked_background_real_A.png')
 				# self.save_image(self.foreground_real_A, 'saved_img/masked_foreground_real_A.png')
 				
