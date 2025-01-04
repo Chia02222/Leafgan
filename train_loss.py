@@ -229,8 +229,6 @@ if __name__ == '__main__':
                     losses[loss_name].append(loss_value.item())
                 else:
                     losses[loss_name].append(float(loss_value))
-                        for loss_name, loss_value in current_losses.items():
-                            losses[loss_name].append(loss_value)
                 
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
