@@ -222,20 +222,20 @@ if __name__ == '__main__':
             avg_psnr_B = np.mean(psnr_list_B)
             current_losses = model.get_current_losses()
             print("Current losses:", current_losses)
+
+            print("Before update:")
+            print("losses['D_A'] type:", type(losses['D_A']))
+            # Update with the new values
+            for loss_name in current_losses:
+                if not isinstance(losses[loss_name], list):
+                    losses[loss_name] = []  # Reset to list if it somehow became a float
+                losses[loss_name].append(float(current_losses[loss_name]))
+
+            print("After update:")
+            print("losses['D_A'] type:", type(losses['D_A']))
             
             print("Type of first loss value:", type(next(iter(current_losses.values()))))
-            # Try with explicit float conversion
-            for loss_name, loss_value in current_losses.items():
-                try:
-                    # If it's a tensor
-                    if hasattr(loss_value, 'item'):
-                        losses[loss_name].append(loss_value.item())
-                    else:
-                        # If it's already a number
-                        losses[loss_name].append(float(loss_value))
-                except Exception as e:
-                    print(f"Error with {loss_name}: {e}")
-                    
+            
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
             epoch_ssim_B.append(avg_ssim_B)
