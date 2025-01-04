@@ -223,13 +223,19 @@ if __name__ == '__main__':
             current_losses = model.get_current_losses()
             print("Current losses:", current_losses)
             
-            # If the value is a tensor, we need to convert it to a float
+            print("Type of first loss value:", type(next(iter(current_losses.values()))))
+            # Try with explicit float conversion
             for loss_name, loss_value in current_losses.items():
-                if torch.is_tensor(loss_value):
-                    losses[loss_name].append(loss_value.item())
-                else:
-                    losses[loss_name].append(float(loss_value))
-                
+                try:
+                    # If it's a tensor
+                    if hasattr(loss_value, 'item'):
+                        losses[loss_name].append(loss_value.item())
+                    else:
+                        # If it's already a number
+                        losses[loss_name].append(float(loss_value))
+                except Exception as e:
+                    print(f"Error with {loss_name}: {e}")
+                    
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
             epoch_ssim_B.append(avg_ssim_B)
