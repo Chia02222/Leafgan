@@ -221,9 +221,16 @@ if __name__ == '__main__':
             avg_ssim_B = np.mean(ssim_list_B)
             avg_psnr_B = np.mean(psnr_list_B)
             current_losses = model.get_current_losses()
-
+            print("Current losses:", current_losses)
+            
+            # If the value is a tensor, we need to convert it to a float
             for loss_name, loss_value in current_losses.items():
-                losses[loss_name].append(loss_value)
+                if torch.is_tensor(loss_value):
+                    losses[loss_name].append(loss_value.item())
+                else:
+                    losses[loss_name].append(float(loss_value))
+                        for loss_name, loss_value in current_losses.items():
+                            losses[loss_name].append(loss_value)
                 
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
