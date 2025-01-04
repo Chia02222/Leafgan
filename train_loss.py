@@ -137,17 +137,6 @@ if __name__ == '__main__':
         iter_data_time = time.time()
         epoch_iter = 0
 
-        D_A_loss = 0.0
-        D_B_loss = 0.0
-        G_A_loss = 0.0
-        G_B_loss = 0.0
-        cycle_A_loss = 0.0
-        cycle_B_loss = 0.0
-        idt_A_loss = 0.00
-        idt_B_loss = 0.00
-        perceptual_A_loss = 0.00
-        perceptual_B_loss = 0.00
-
         for i, data in enumerate(dataset):
             iter_start_time = time.time()
             if total_iters % opt.print_freq == 0:
@@ -157,17 +146,6 @@ if __name__ == '__main__':
             epoch_iter += opt.batch_size
             model.set_input(data)
             model.optimize_parameters()
-
-            losses['D_A'].append(D_A_loss)
-            losses['D_B'].append(D_B_loss)
-            losses['G_A'].append(G_A_loss)
-            losses['G_B'].append(G_B_loss)
-            losses['cycle_A'].append(cycle_A_loss)
-            losses['cycle_B'].append(cycle_B_loss)
-            losses['idt_A'].append(idt_A_loss)
-            losses['idt_B'].append(idt_B_loss)
-            losses['perceptual_A'].append(perceptual_A_loss)
-            losses['perceptual_B'].append(perceptual_B_loss)
 
             real_A = data['A'].to(model.device)
             real_B = data['B'].to(model.device)
@@ -243,8 +221,10 @@ if __name__ == '__main__':
             avg_ssim_B = np.mean(ssim_list_B)
             avg_psnr_B = np.mean(psnr_list_B)
             current_losses = model.get_current_losses()
-        for key in losses.keys():
-            losses[key].append(current_losses[key])
+
+            for loss_name, loss_value in current_losses.items():
+                losses[loss_name].append(loss_value)
+                
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
             epoch_ssim_B.append(avg_ssim_B)
