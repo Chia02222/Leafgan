@@ -221,13 +221,12 @@ if __name__ == '__main__':
             # Update with the new values
             for loss_name in current_losses:
                 if loss_name not in losses:
-                    print(f"Key '{loss_name}' not found in 'losses'. Initializing as empty list.")
                     losses[loss_name] = []
-                # Proceed to update the value
                 if not isinstance(losses[loss_name], list):
-                    print(f"Resetting '{loss_name}' to an empty list because it is not a list.")
                     losses[loss_name] = []
-                losses[loss_name].append(float(current_losses[loss_name]))
+                value = float(current_losses[loss_name])
+                losses[loss_name].append(value)
+                print(f"Updated '{loss_name}': {losses[loss_name]}")
             
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
