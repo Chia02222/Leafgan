@@ -224,13 +224,16 @@ if __name__ == '__main__':
         
                 # Ensure we have a list
                 if not isinstance(losses[loss_name], list):
-                    print(f"Converting {loss_name} back to list")
                     old_value = losses[loss_name]
                     losses[loss_name] = [old_value] if not isinstance(old_value, list) else old_value
             
                 value = float(current_losses[loss_name])
                 losses[loss_name].append(value)
                 print(f"Epoch {epoch}, {loss_name}: {value}")
+
+                print("\nVerifying loss history:")
+                for loss_name in losses:
+                    print(f"{loss_name} history (length={len(losses[loss_name])}): {[f'{x:.4f}' for x in losses[loss_name]]}")
             
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
