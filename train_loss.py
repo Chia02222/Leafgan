@@ -26,28 +26,32 @@ def calculate_psnr(real_images, reconstructed_images):
     return psnr.item()
 
 def save_metrics_plot(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, epoch_losses, checkpoint_dir):
+    # Calculate the x-axis labels for 5-epoch intervals
+    x_labels = [i * 5 for i in range(len(epoch_ssim_A))]
+    
+    # Plot metrics
     plt.figure()
     plt.subplot(2, 2, 1)
-    plt.plot(range(len(epoch_ssim_A*5)), epoch_ssim_A, label='Average SSIM A')
-    plt.xlabel('Epoch')
+    plt.plot(x_labels, epoch_ssim_A, label='Average SSIM A')
+    plt.xlabel('Epoch (x5)')
     plt.ylabel('Average SSIM A')
     plt.legend()
 
     plt.subplot(2, 2, 2)
-    plt.plot(range(len(epoch_psnr_A*5)), epoch_psnr_A, label='Average PSNR A')
-    plt.xlabel('Epoch')
+    plt.plot(x_labels, epoch_psnr_A, label='Average PSNR A')
+    plt.xlabel('Epoch (x5)')
     plt.ylabel('Average PSNR A')
     plt.legend()
 
     plt.subplot(2, 2, 3)
-    plt.plot(range(len(epoch_ssim_B*5)), epoch_ssim_B, label='Average SSIM B')
-    plt.xlabel('Epoch')
+    plt.plot(x_labels, epoch_ssim_B, label='Average SSIM B')
+    plt.xlabel('Epoch (x5)')
     plt.ylabel('Average SSIM B')
     plt.legend()
 
     plt.subplot(2, 2, 4)
-    plt.plot(range(len(epoch_psnr_B*5)), epoch_psnr_B, label='Average PSNR B')
-    plt.xlabel('Epoch')
+    plt.plot(x_labels, epoch_psnr_B, label='Average PSNR B')
+    plt.xlabel('Epoch (x5)')
     plt.ylabel('Average PSNR B')
     plt.legend()
 
@@ -57,8 +61,8 @@ def save_metrics_plot(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, ep
 
     # Plot epoch losses
     plt.figure()
-    plt.plot(range(len(epoch_losses)), epoch_losses, label='Epoch Losses')
-    plt.xlabel('Epoch')
+    plt.plot(x_labels, epoch_losses, label='Epoch Losses')
+    plt.xlabel('Epoch (x5)')
     plt.ylabel('Loss')
     plt.legend()
     plt.tight_layout()
