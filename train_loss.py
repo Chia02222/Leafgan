@@ -206,7 +206,11 @@ if __name__ == '__main__':
                 model.save_networks(save_suffix)
 
             iter_data_time = time.time()
-
+            
+        current_losses = model.get_current_losses()
+        for loss_name in current_losses:
+            epoch_losses[loss_name] += float(current_losses[loss_name])
+            
         if epoch % opt.save_epoch_freq == 0:
             print(f'Saving the model at the end of epoch {epoch}, iters {total_iters}')
             model.save_networks('latest')
@@ -217,28 +221,16 @@ if __name__ == '__main__':
             avg_psnr_A = np.mean(psnr_list_A)
             avg_ssim_B = np.mean(ssim_list_B)
             avg_psnr_B = np.mean(psnr_list_B)
-            current_losses = model.get_current_losses()
-            # Update with the new values
-            for loss_name in current_losses:
-                print(f"Type of losses[{loss_name}]: {type(losses[loss_name])}")
-        
-                # Ensure we have a list
-                if not isinstance(losses[loss_name], list):
-                    old_value = losses[loss_name]
-                    losses[loss_name] = [old_value] if not isinstance(old_value, list) else old_value
+            print(f"\nEpoch [{epoch}/100] Average Losses:")
+            print("------------------")
+            for loss_name in epoch_losses:
+                avg_loss = epoch_losses[loss_name] / n_iters
+                losses[loss_name].append(avg_loss)  # Append to history
+                print(f"{loss_name}: {avg_loss:.4f}")
             
-                value = float(current_losses[loss_name])
-                losses[loss_name].append(value)
-                print(f"Epoch {epoch}, {loss_name}: {value}")
-
-                history = losses[loss_name]
-                    length = len(history)
-                    if length >= 2:
-                        print(f"{loss_name}: Last two values = {history[-2]:.4f}, {history[-1]:.4f} (total: {length})")
-                    elif length == 1:
-                        print(f"{loss_name}: Last value = {history[-1]:.4f} (total: {length})")
-                    else:
-                        print(f"{loss_name}: Empty")
+            # Reset running sums for next epoch
+            epoch_losses = {k: 0 for k in epoch_losses}
+            n_iters = 0
             
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
