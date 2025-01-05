@@ -69,23 +69,6 @@ def save_metrics_plot(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, ep
     plt.savefig(os.path.join(checkpoint_dir, 'loss_plot.png'))
     plt.close()
 
-def save_loss_plot(losses, checkpoint_dir):
-    plt.figure(figsize=(12, 8))
-
-    # Plot each loss
-    for loss_name, loss_values in losses.items():
-        plt.plot(range(len(loss_values)), loss_values, label=loss_name, marker='o')
-
-    # Customize the plot
-    plt.title("Losses Over Epochs")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss Value")
-    plt.grid(True, linestyle='--', alpha=0.6)
-    plt.legend(loc="upper right", fontsize="small")
-    plt.tight_layout()
-    plt.savefig(os.path.join(checkpoint_dir, 'losses_plot.png'))
-
-
 def save_metrics_csv(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, epoch_losses, checkpoint_dir):
     csv_file = os.path.join(checkpoint_dir, 'metrics.csv')
     with open(csv_file, 'w', newline='') as file:
