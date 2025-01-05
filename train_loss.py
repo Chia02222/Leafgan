@@ -257,9 +257,4 @@ if __name__ == '__main__':
         f.write(f'Best SSIM B: {best_ssim_B:.4f}, Best PSNR B: {best_psnr_B:.4f}\n')
         f.write(f'Final SSIM A: {final_ssim_A:.4f}, Final PSNR A: {final_psnr_A:.4f}\n')
         f.write(f'Final SSIM B: {final_ssim_B:.4f}, Final PSNR B: {final_psnr_B:.4f}\n')
-
-    # Save losses to file (optional)
-    with open('losses.json', 'w') as f:
-        json.dump(losses, f)
-
     
