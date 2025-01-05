@@ -220,6 +220,14 @@ if __name__ == '__main__':
             current_losses = model.get_current_losses()
             # Update with the new values
             for loss_name in current_losses:
+                print(f"Type of losses[{loss_name}]: {type(losses[loss_name])}")
+        
+                # Ensure we have a list
+                if not isinstance(losses[loss_name], list):
+                    print(f"Converting {loss_name} back to list")
+                    old_value = losses[loss_name]
+                    losses[loss_name] = [old_value] if not isinstance(old_value, list) else old_value
+            
                 value = float(current_losses[loss_name])
                 losses[loss_name].append(value)
                 print(f"Epoch {epoch}, {loss_name}: {value}")
