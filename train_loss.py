@@ -113,7 +113,6 @@ if __name__ == '__main__':
     epoch_psnr_A = []
     epoch_ssim_B = []
     epoch_psnr_B = []
-    losses = {'D_A': [], 'D_B': [], 'G_A': [], 'G_B': [], 'cycle_A': [], 'cycle_B': [], 'idt_A': [], 'idt_B': [], 'perceptual_A': [], 'perceptual_B': []}
     epoch_losses = []
 
     best_ssim_A = -float('inf')
@@ -207,10 +206,6 @@ if __name__ == '__main__':
 
             iter_data_time = time.time()
             
-        current_losses = model.get_current_losses()
-        for loss_name in current_losses:
-            epoch_losses[loss_name] += float(current_losses[loss_name])
-            
         if epoch % opt.save_epoch_freq == 0:
             print(f'Saving the model at the end of epoch {epoch}, iters {total_iters}')
             model.save_networks('latest')
@@ -221,16 +216,7 @@ if __name__ == '__main__':
             avg_psnr_A = np.mean(psnr_list_A)
             avg_ssim_B = np.mean(ssim_list_B)
             avg_psnr_B = np.mean(psnr_list_B)
-            print(f"\nEpoch [{epoch}/100] Average Losses:")
-            print("------------------")
-            for loss_name in epoch_losses:
-                avg_loss = epoch_losses[loss_name] / n_iters
-                losses[loss_name].append(avg_loss)  # Append to history
-                print(f"{loss_name}: {avg_loss:.4f}")
-            
-            # Reset running sums for next epoch
-            epoch_losses = {k: 0 for k in epoch_losses}
-            n_iters = 0
+
             
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
