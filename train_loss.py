@@ -240,6 +240,7 @@ if __name__ == '__main__':
             epoch_psnr_A.append(avg_psnr_A)
             epoch_ssim_B.append(avg_ssim_B)
             epoch_psnr_B.append(avg_psnr_B)
+            avg_loss = np.mean([losses[k] for k in losses])  # Calculate average loss
             epoch_losses.append(avg_loss)
 
             # Store final metrics
