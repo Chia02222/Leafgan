@@ -70,19 +70,11 @@ def save_metrics_plot(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, ep
     plt.close()
 
 def save_loss_plot(losses, checkpoint_dir):
-    """
-    Saves a plot showing the evolution of multiple losses over epochs.
-
-    Parameters:
-    - losses: Dictionary where keys are loss names and values are lists of loss values per epoch.
-              Example: {'D_A': [...], 'D_B': [...], 'G_A': [...], ...}
-    - checkpoint_dir: Directory where the plot will be saved.
-    """
     plt.figure(figsize=(12, 8))
 
     # Plot each loss
     for loss_name, loss_values in losses.items():
-        plt.plot(range(len(loss_values)), loss_values, label=loss_name, marker='o')
+        plt.plot(range(1, len(loss_values) + 1), loss_values, label=loss_name, marker='o')
 
     # Customize the plot
     plt.title("Losses Over Epochs")
