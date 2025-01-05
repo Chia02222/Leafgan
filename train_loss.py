@@ -220,13 +220,9 @@ if __name__ == '__main__':
             current_losses = model.get_current_losses()
             # Update with the new values
             for loss_name in current_losses:
-                if loss_name not in losses:
-                    losses[loss_name] = []
-                if not isinstance(losses[loss_name], list):
-                    losses[loss_name] = []
                 value = float(current_losses[loss_name])
                 losses[loss_name].append(value)
-                print(f"Updated '{loss_name}': {losses[loss_name]}")
+                print(f"Epoch {epoch}, {loss_name}: {value}")
             
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
