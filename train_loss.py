@@ -74,7 +74,7 @@ def save_loss_plot(losses, checkpoint_dir):
 
     # Plot each loss
     for loss_name, loss_values in losses.items():
-        plt.plot(range(1, len(loss_values) + 1), loss_values, label=loss_name, marker='o')
+        plt.plot(range(len(loss_values)), loss_values, label=loss_name, marker='o')
 
     # Customize the plot
     plt.title("Losses Over Epochs")
