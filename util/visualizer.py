@@ -214,10 +214,10 @@ class Visualizer():
         ax.set_ylabel('Loss')
         ax.legend()
     
-        # Save the figure as an image
-        loss_image_path = f"{self.name}_loss_epoch_{epoch}.png"
-        plt.savefig(loss_image_path)
-        plt.close(fig)  # Close the figure to avoid memory issues
+        loss_image_path = os.path.join(loss_image_folder, f"{self.name}_loss_epoch_{epoch}.png")
+        plt.savefig(loss_image_path)  # Save the plot as an image
+        plt.close(fig)  # Close the figure to release memory
+        print(f"Loss plot saved as {loss_image_path}")  # Output message to confirm saving
 
     # losses: same format as |losses| of plot_current_losses
     def print_current_losses(self, epoch, iters, losses, t_comp, t_data):
