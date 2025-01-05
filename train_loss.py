@@ -231,9 +231,14 @@ if __name__ == '__main__':
                 losses[loss_name].append(value)
                 print(f"Epoch {epoch}, {loss_name}: {value}")
 
-                print("\nVerifying loss history:")
-                for loss_name in losses:
-                    print(f"{loss_name} history (length={len(losses[loss_name])}): {[f'{x:.4f}' for x in losses[loss_name]]}")
+                history = losses[loss_name]
+                    length = len(history)
+                    if length >= 2:
+                        print(f"{loss_name}: Last two values = {history[-2]:.4f}, {history[-1]:.4f} (total: {length})")
+                    elif length == 1:
+                        print(f"{loss_name}: Last value = {history[-1]:.4f} (total: {length})")
+                    else:
+                        print(f"{loss_name}: Empty")
             
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
