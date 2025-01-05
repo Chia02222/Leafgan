@@ -28,25 +28,25 @@ def calculate_psnr(real_images, reconstructed_images):
 def save_metrics_plot(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, epoch_losses, checkpoint_dir):
     plt.figure()
     plt.subplot(2, 2, 1)
-    plt.plot(range(len(epoch_ssim_A)), epoch_ssim_A, label='Average SSIM A')
+    plt.plot(range(len(epoch_ssim_A)*5), epoch_ssim_A, label='Average SSIM A')
     plt.xlabel('Epoch')
     plt.ylabel('Average SSIM A')
     plt.legend()
 
     plt.subplot(2, 2, 2)
-    plt.plot(range(len(epoch_psnr_A)), epoch_psnr_A, label='Average PSNR A')
+    plt.plot(range(len(epoch_psnr_A)*5), epoch_psnr_A, label='Average PSNR A')
     plt.xlabel('Epoch')
     plt.ylabel('Average PSNR A')
     plt.legend()
 
     plt.subplot(2, 2, 3)
-    plt.plot(range(len(epoch_ssim_B)), epoch_ssim_B, label='Average SSIM B')
+    plt.plot(range(len(epoch_ssim_B)*5), epoch_ssim_B, label='Average SSIM B')
     plt.xlabel('Epoch')
     plt.ylabel('Average SSIM B')
     plt.legend()
 
     plt.subplot(2, 2, 4)
-    plt.plot(range(len(epoch_psnr_B)), epoch_psnr_B, label='Average PSNR B')
+    plt.plot(range(len(epoch_psnr_B)*5), epoch_psnr_B, label='Average PSNR B')
     plt.xlabel('Epoch')
     plt.ylabel('Average PSNR B')
     plt.legend()
@@ -222,20 +222,11 @@ if __name__ == '__main__':
             avg_ssim_B = np.mean(ssim_list_B)
             avg_psnr_B = np.mean(psnr_list_B)
             current_losses = model.get_current_losses()
-            print("Current losses:", current_losses)
-
-            print("Before update:")
-            print("losses['D_A'] type:", type(losses['D_A']))
             # Update with the new values
             for loss_name in current_losses:
                 if not isinstance(losses[loss_name], list):
                     losses[loss_name] = []  # Reset to list if it somehow became a float
                 losses[loss_name].append(float(current_losses[loss_name]))
-
-            print("After update:")
-            print("losses['D_A'] type:", type(losses['D_A']))
-            
-            print("Type of first loss value:", type(next(iter(current_losses.values()))))
             
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
