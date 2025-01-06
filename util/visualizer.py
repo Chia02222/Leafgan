@@ -178,11 +178,7 @@ class Visualizer():
             webpage.save()
             
     def save_log_to_excel(self, excel_path="loss_log.xlsx"):
-        """Save the training losses log to an Excel file with string values.
-    
-        Parameters:
-            excel_path (str) -- path to save the Excel file (default: 'loss_log.xlsx')
-        """
+        """Save the training losses log to an Excel file with string values."""
         import pandas as pd  # Ensure pandas is imported
     
         log_data = []
@@ -206,7 +202,12 @@ class Visualizer():
                     # Add epoch and iteration to the dictionary
                     loss_dict.update({"epoch": epoch, "iters": iters})
                     log_data.append(loss_dict)
-    
+        
+        # Calculate the average loss for each epoch (if you want to calculate sum, use np.sum)
+        for epoch, losses in self.epoch_losses.items():
+            avg_loss = np.mean(losses)  # or sum(losses) for sum of losses
+            log_data.append({"epoch": epoch, "avg_loss": avg_loss})
+
         # Convert to DataFrame and save to Excel
         df = pd.DataFrame(log_data)
         df.to_excel(excel_path, index=False)
@@ -239,15 +240,7 @@ class Visualizer():
 
     # losses: same format as |losses| of plot_current_losses
     def print_current_losses(self, epoch, iters, losses, t_comp, t_data):
-        """print current losses on console; also save the losses to the disk
-
-        Parameters:
-            epoch (int) -- current epoch
-            iters (int) -- current training iteration during this epoch (reset to 0 at the end of every epoch)
-            losses (OrderedDict) -- training losses stored in the format of (name, float) pairs
-            t_comp (float) -- computational time per data point (normalized by batch_size)
-            t_data (float) -- data loading time per data point (normalized by batch_size)
-        """
+        """print current losses on console; also save the losses to the disk"""
         message = '(epoch: %d, iters: %d, time: %.3f, data: %.3f) ' % (epoch, iters, t_comp, t_data)
         for k, v in losses.items():
             message += '%s: %.3f ' % (k, v)
@@ -255,3 +248,10 @@ class Visualizer():
         print(message)  # print the message
         with open(self.log_name, "a") as log_file:
             log_file.write('%s\n' % message)  # save the message
+        
+        # Accumulate losses for each epoch
+        if epoch not in self.epoch_losses:
+            self.epoch_losses[epoch] = []
+        for k, v in losses.items():
+            self.epoch_losses[epoch].append(v)
+    
