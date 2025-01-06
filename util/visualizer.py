@@ -178,7 +178,7 @@ class Visualizer():
             webpage.save()
             
     def save_log_to_excel(self, excel_path="loss_log.xlsx"):
-        """Save the training losses log to an Excel file.
+        """Save the training losses log to an Excel file with string values.
     
         Parameters:
             excel_path (str) -- path to save the Excel file (default: 'loss_log.xlsx')
@@ -199,8 +199,9 @@ class Visualizer():
                     loss_dict = {}
                     for i in range(0, len(rest), 2):
                         key = rest[i]
-                        value = float(rest[i + 1].replace("\n", "").strip())  # Clean and convert to float
-                        loss_dict[key] = value
+                        # Directly save the string value without conversion
+                        value_str = rest[i + 1].replace("\n", "").replace("\r", "").strip()
+                        loss_dict[key] = value_str  # Store as string
     
                     # Add epoch and iteration to the dictionary
                     loss_dict.update({"epoch": epoch, "iters": iters})
@@ -210,7 +211,6 @@ class Visualizer():
         df = pd.DataFrame(log_data)
         df.to_excel(excel_path, index=False)
         print(f"Log saved to Excel file: {excel_path}")
-
         
     def plot_current_losses(self, epoch, counter_ratio, losses):
         """display the current losses on visdom display: dictionary of error labels and values
