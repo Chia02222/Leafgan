@@ -178,37 +178,18 @@ class Visualizer():
             webpage.save()
             
     def save_log_to_excel(self, excel_path="loss_log.xlsx"):
-        """Save the training losses log to an Excel file with string values.
-    
-        Parameters:
-            excel_path (str): Path to save the Excel file (default: 'loss_log.xlsx')
-        """
-        import pandas as pd  # Ensure pandas is imported
-    
+        """Save accumulated training losses to an Excel file."""
+        import pandas as pd
+
         log_data = []
-        with open(self.log_name, "r") as log_file:
-            for line in log_file:
-                if line.startswith('('):  # Log entries start with a timestamp in parentheses
-                    # Split the line into components
-                    parts = line.strip().split(", ")
-                    epoch = int(parts[0].split(":")[1])  # Extract epoch
-                    iters = int(parts[1].split(":")[1])  # Extract iteration
-    
-                    # Extract losses and clean strings
-                    rest = " ".join(parts[2:]).split()  # Combine the rest and split
-                    loss_dict = {}
-                    for i in range(0, len(rest), 2):
-                        key = rest[i]
-                        value_str = rest[i + 1].replace("\n", "").replace("\r", "").strip()
-                        loss_dict[key] = value_str  # Store as string
-    
-                    # Add epoch and iteration to the dictionary
-                    loss_dict.update({"epoch": epoch, "iters": iters})
-                    log_data.append(loss_dict)
-    
+        for epoch, losses in self.epoch_losses.items():
+            loss_data = {"epoch": epoch}
+            loss_data.update(losses)
+            log_data.append(loss_data)
+
         # Convert the loss data to a DataFrame
         df = pd.DataFrame(log_data)
-    
+
         # Save the loss data to an Excel file
         df.to_excel(excel_path, index=False)
         print(f"Log saved to Excel file: {excel_path}")
@@ -238,27 +219,20 @@ class Visualizer():
         except VisdomExceptionBase:
             self.create_visdom_connections()
 
-
     def print_current_losses(self, epoch, iters, losses, t_comp, t_data):
-        """Print current losses and save them to a log file.
-    
-        Parameters:
-            epoch (int): Current epoch.
-            iters (int): Current training iteration during this epoch.
-            losses (OrderedDict): Training losses stored in the format of (name, float) pairs.
-            t_comp (float): Computational time per data point (normalized by batch size).
-            t_data (float): Data loading time per data point (normalized by batch size).
-        """
+        """Print current losses, accumulate them, and save to the log file."""
         message = '(epoch: %d, iters: %d, time: %.3f, data: %.3f) ' % (epoch, iters, t_comp, t_data)
+        
+        # Accumulate the losses for the current epoch
+        self.accumulate_loss(epoch, losses)
         
         # Add loss information for each label
         for k, v in losses.items():
             message += '%s: %.3f ' % (k, v)
-    
+
         print(message)  # Print message to console
-    
+        
         # Log the message into the loss log file
         with open(self.log_name, "a") as log_file:
             log_file.write('%s\n' % message)  # Save log message
-
     
