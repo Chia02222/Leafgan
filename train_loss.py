@@ -222,6 +222,7 @@ if __name__ == '__main__':
 
     save_metrics_plot(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, epoch_losses, opt.checkpoints_dir)
     save_metrics_csv(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, epoch_losses, opt.checkpoints_dir)
+    visualizer.save_log_to_excel("my_training_log.xlsx")
 
     # Save best and final metrics
     with open(os.path.join(opt.checkpoints_dir, 'best_and_final_metrics.txt'), 'w') as f:
