@@ -178,7 +178,11 @@ class Visualizer():
             webpage.save()
             
     def save_log_to_excel(self, excel_path="loss_log.xlsx"):
-        """Save the training losses log to an Excel file with string values."""
+        """Save the training losses log to an Excel file with string values.
+    
+        Parameters:
+            excel_path (str): Path to save the Excel file (default: 'loss_log.xlsx')
+        """
         import pandas as pd  # Ensure pandas is imported
     
         log_data = []
@@ -195,24 +199,20 @@ class Visualizer():
                     loss_dict = {}
                     for i in range(0, len(rest), 2):
                         key = rest[i]
-                        # Directly save the string value without conversion
                         value_str = rest[i + 1].replace("\n", "").replace("\r", "").strip()
                         loss_dict[key] = value_str  # Store as string
     
                     # Add epoch and iteration to the dictionary
                     loss_dict.update({"epoch": epoch, "iters": iters})
                     log_data.append(loss_dict)
-        
-        # Calculate the average loss for each epoch (if you want to calculate sum, use np.sum)
-        for epoch, losses in self.epoch_losses.items():
-            avg_loss = np.mean(losses)  # or sum(losses) for sum of losses
-            log_data.append({"epoch": epoch, "avg_loss": avg_loss})
-
-        # Convert to DataFrame and save to Excel
+    
+        # Convert the loss data to a DataFrame
         df = pd.DataFrame(log_data)
+    
+        # Save the loss data to an Excel file
         df.to_excel(excel_path, index=False)
         print(f"Log saved to Excel file: {excel_path}")
-        
+
     def plot_current_losses(self, epoch, counter_ratio, losses):
         """display the current losses on visdom display: dictionary of error labels and values
 
@@ -238,20 +238,27 @@ class Visualizer():
         except VisdomExceptionBase:
             self.create_visdom_connections()
 
-    # losses: same format as |losses| of plot_current_losses
+
     def print_current_losses(self, epoch, iters, losses, t_comp, t_data):
-        """print current losses on console; also save the losses to the disk"""
+        """Print current losses and save them to a log file.
+    
+        Parameters:
+            epoch (int): Current epoch.
+            iters (int): Current training iteration during this epoch.
+            losses (OrderedDict): Training losses stored in the format of (name, float) pairs.
+            t_comp (float): Computational time per data point (normalized by batch size).
+            t_data (float): Data loading time per data point (normalized by batch size).
+        """
         message = '(epoch: %d, iters: %d, time: %.3f, data: %.3f) ' % (epoch, iters, t_comp, t_data)
+        
+        # Add loss information for each label
         for k, v in losses.items():
             message += '%s: %.3f ' % (k, v)
-
-        print(message)  # print the message
+    
+        print(message)  # Print message to console
+    
+        # Log the message into the loss log file
         with open(self.log_name, "a") as log_file:
-            log_file.write('%s\n' % message)  # save the message
-        
-        # Accumulate losses for each epoch
-        if epoch not in self.epoch_losses:
-            self.epoch_losses[epoch] = []
-        for k, v in losses.items():
-            self.epoch_losses[epoch].append(v)
+            log_file.write('%s\n' % message)  # Save log message
+
     
