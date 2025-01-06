@@ -176,7 +176,15 @@ class Visualizer():
                     links.append(img_path)
                 webpage.add_images(ims, txts, links, width=self.win_size)
             webpage.save()
-            
+
+    def accumulate_loss(self, epoch, losses):
+        """Accumulate the losses for the given epoch."""
+        if epoch not in self.epoch_losses:
+            self.epoch_losses[epoch] = {key: 0.0 for key in losses.keys()}  # Initialize loss accumulator
+        
+        for k, v in losses.items():
+            self.epoch_losses[epoch][k] += v  # Accumulate losses for each key
+    
     def save_log_to_excel(self, excel_path="loss_log.xlsx"):
         """Save accumulated training losses to an Excel file."""
         import pandas as pd
