@@ -179,7 +179,7 @@ class Visualizer():
 
     def plot_current_losses(self, epoch, counter_ratio, losses):
         """display the current losses on visdom display: dictionary of error labels and values
-        
+
         Parameters:
             epoch (int)           -- current epoch
             counter_ratio (float) -- progress (percentage) in the current epoch, between 0 to 1
@@ -189,8 +189,6 @@ class Visualizer():
             self.plot_data = {'X': [], 'Y': [], 'legend': list(losses.keys())}
         self.plot_data['X'].append(epoch + counter_ratio)
         self.plot_data['Y'].append([losses[k] for k in self.plot_data['legend']])
-    
-        # Plot the losses on Visdom
         try:
             self.vis.line(
                 X=np.stack([np.array(self.plot_data['X'])] * len(self.plot_data['legend']), 1),
@@ -203,29 +201,6 @@ class Visualizer():
                 win=self.display_id)
         except VisdomExceptionBase:
             self.create_visdom_connections()
-    
-        # Create an image of the losses as a plot
-        fig, ax = plt.subplots()
-        for i, loss_name in enumerate(self.plot_data['legend']):
-            ax.plot(self.plot_data['X'], [y[i] for y in self.plot_data['Y']], label=loss_name)
-    
-        ax.set_title(f"{self.name} Losses Over Time (Epoch {epoch})")
-        ax.set_xlabel('Epoch')
-        ax.set_ylabel('Loss')
-        ax.legend()
-    
-        # Define the path for saving the loss plot image
-        loss_image_folder = os.path.join(self.opt.checkpoints_dir, self.opt.name, 'loss_images')
-        
-        # Ensure the folder exists
-        if not os.path.exists(loss_image_folder):
-            os.makedirs(loss_image_folder)
-    
-        # Save the plot as an image
-        loss_image_path = os.path.join(loss_image_folder, f"{self.name}_loss_epoch_{epoch}.png")
-        plt.savefig(loss_image_path)  # Save the plot as an image
-        plt.close(fig)  # Close the figure to release memory
-        print(f"Loss plot saved as {loss_image_path}")  # Output message to confirm saving
 
     # losses: same format as |losses| of plot_current_losses
     def print_current_losses(self, epoch, iters, losses, t_comp, t_data):
