@@ -66,6 +66,7 @@ class Visualizer():
         self.win_size = opt.display_winsize
         self.name = opt.name
         self.port = opt.display_port
+        self.epoch_losses = {}
         self.saved = False
         if self.display_id > 0:  # connect to a visdom server given <display_port> and <display_server>
             import visdom
