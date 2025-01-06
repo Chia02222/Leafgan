@@ -179,26 +179,38 @@ class Visualizer():
             
     def save_log_to_excel(self, excel_path="loss_log.xlsx"):
         """Save the training losses log to an Excel file.
-
+    
         Parameters:
             excel_path (str) -- path to save the Excel file (default: 'loss_log.xlsx')
         """
-        # Read the log file
+        import pandas as pd  # Ensure pandas is imported
+    
         log_data = []
         with open(self.log_name, "r") as log_file:
             for line in log_file:
                 if line.startswith('('):  # Log entries start with a timestamp in parentheses
-                    epoch, iters, *rest = line.split(", ")
-                    rest = " ".join(rest).split()  # Split remaining values into key-value pairs
-                    loss_dict = {rest[i]: float(rest[i + 1]) for i in range(0, len(rest), 2)}
-                    loss_dict.update({"epoch": int(epoch.split(":")[1]),
-                                      "iters": int(iters.split(":")[1])})
+                    # Split the line into components
+                    parts = line.strip().split(", ")
+                    epoch = int(parts[0].split(":")[1])  # Extract epoch
+                    iters = int(parts[1].split(":")[1])  # Extract iteration
+    
+                    # Extract losses and clean strings
+                    rest = " ".join(parts[2:]).split()  # Combine the rest and split
+                    loss_dict = {}
+                    for i in range(0, len(rest), 2):
+                        key = rest[i]
+                        value = float(rest[i + 1].replace("\n", "").strip())  # Clean and convert to float
+                        loss_dict[key] = value
+    
+                    # Add epoch and iteration to the dictionary
+                    loss_dict.update({"epoch": epoch, "iters": iters})
                     log_data.append(loss_dict)
-
+    
         # Convert to DataFrame and save to Excel
         df = pd.DataFrame(log_data)
         df.to_excel(excel_path, index=False)
         print(f"Log saved to Excel file: {excel_path}")
+
         
     def plot_current_losses(self, epoch, counter_ratio, losses):
         """display the current losses on visdom display: dictionary of error labels and values
