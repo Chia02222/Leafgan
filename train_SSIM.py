@@ -189,7 +189,7 @@ if __name__ == '__main__':
             # 进行反向传播并优化模型
             total_loss.backward()
             optimizer.step()
-=
+
             if total_iters % opt.display_freq == 0:
                 save_result = total_iters % opt.update_html_freq == 0
                 model.compute_visuals()
