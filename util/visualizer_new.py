@@ -98,45 +98,45 @@ class Visualizer():
         Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
 
     def display_current_results(self, visuals, epoch, save_result):
-    """
-    Display current results on visdom; save current results to an HTML file.
-
-    Parameters:
-        visuals (OrderedDict) - - dictionary of images to display or save
-        epoch (int) - - the current epoch
-        save_result (bool) - - if save the current results to an HTML file
-    """
-    if self.use_html and (save_result or not self.saved):  # Save images to an HTML file
-        self.saved = True
-
-        # 保存特定图片的变化
-        if self.target_image_path:  # 如果设置了目标图片路径
-            target_name = ntpath.basename(self.target_image_path)
-            for label, image in visuals.items():
-                if label in target_name:  # 匹配目标图片的标签
+        """
+        Display current results on visdom; save current results to an HTML file.
+    
+        Parameters:
+            visuals (OrderedDict) - - dictionary of images to display or save
+            epoch (int) - - the current epoch
+            save_result (bool) - - if save the current results to an HTML file
+        """
+        if self.use_html and (save_result or not self.saved):  # Save images to an HTML file
+            self.saved = True
+    
+            # 保存特定图片的变化
+            if self.target_image_path:  # 如果设置了目标图片路径
+                target_name = ntpath.basename(self.target_image_path)
+                for label, image in visuals.items():
+                    if label in target_name:  # 匹配目标图片的标签
+                        image_numpy = util.tensor2im(image)
+    
+                        # 计算当前 epoch 所属分组，例如 epoch 1-10, 11-20
+                        group = (epoch - 1) // 10 + 1
+                        group_dir = os.path.join(self.img_dir, f'group_{group * 10 - 9}-{group * 10}')
+                        util.mkdirs(group_dir)  # 创建分组文件夹
+    
+                        # 保存图片
+                        img_path = os.path.join(group_dir, f'epoch{epoch:03d}_{label}.png')
+                        util.save_image(image_numpy, img_path)
+            else:
+                # 默认行为：保存所有图片
+                for label, image in visuals.items():
                     image_numpy = util.tensor2im(image)
-
-                    # 计算当前 epoch 所属分组，例如 epoch 1-10, 11-20
+    
+                    # 计算当前 epoch 所属分组
                     group = (epoch - 1) // 10 + 1
                     group_dir = os.path.join(self.img_dir, f'group_{group * 10 - 9}-{group * 10}')
-                    util.mkdirs(group_dir)  # 创建分组文件夹
-
+                    util.mkdirs(group_dir)
+    
                     # 保存图片
                     img_path = os.path.join(group_dir, f'epoch{epoch:03d}_{label}.png')
                     util.save_image(image_numpy, img_path)
-        else:
-            # 默认行为：保存所有图片
-            for label, image in visuals.items():
-                image_numpy = util.tensor2im(image)
-
-                # 计算当前 epoch 所属分组
-                group = (epoch - 1) // 10 + 1
-                group_dir = os.path.join(self.img_dir, f'group_{group * 10 - 9}-{group * 10}')
-                util.mkdirs(group_dir)
-
-                # 保存图片
-                img_path = os.path.join(group_dir, f'epoch{epoch:03d}_{label}.png')
-                util.save_image(image_numpy, img_path)
               
     def accumulate_loss(self, epoch, losses):
         """Accumulate the losses for the given epoch."""
