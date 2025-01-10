@@ -70,6 +70,8 @@ class Visualizer():
         self.saved = False
         self.fixed_images = None
         self.fixed_indices = [0, 5, 10]  # Indices for specific images you want to visualize
+        self.image_label = 'image_label'  # Replace with your actual image label key
+        
         if self.display_id > 0:  # connect to a visdom server given <display_port> and <display_server>
             import visdom
             self.ncols = opt.display_ncols
@@ -101,27 +103,31 @@ class Visualizer():
 
     def display_current_results(self, visuals, epoch, save_result):
         """
-        Display and save results while ensuring consistent image visualization across epochs.
+        Display and save results for a specific image to visualize how it changes across epochs.
+        Print a message indicating which image is being used for each epoch.
         """
         if self.use_html and (save_result or not self.saved):  # Save images to an HTML file
             self.saved = True
 
-            if self.fixed_images is None:
-                # Cache the fixed images based on the selected indices
-                self.fixed_images = {label: visuals[label][self.fixed_indices] for label in visuals}
+            if self.fixed_image is None:
+                # Cache the specific image to track based on the index
+                self.fixed_image = visuals[self.image_label][self.fixed_index]  # Replace 'image_label' with your actual label
 
-            # Save the same set of fixed images for this epoch
-            for label, image in self.fixed_images.items():
-                image_numpy = util.tensor2im(image)
+            # Print message showing which image is being used
+            print(f'Epoch {epoch}: Using image at index {self.fixed_index} for visualization.')
 
-                # Calculate the current group for saving (e.g., group 1-10, 11-20)
-                group = (epoch - 1) // 10 + 1
-                group_dir = os.path.join(self.img_dir, f'group_{group * 10 - 9}-{group * 10}')
-                util.mkdirs(group_dir)  # Ensure the directory exists
+            # Save the same image every epoch
+            image = self.fixed_image
+            image_numpy = util.tensor2im(image)
 
-                # Save the image to the corresponding directory
-                img_path = os.path.join(group_dir, f'epoch{epoch:03d}_{label}.png')
-                util.save_image(image_numpy, img_path)
+            # Calculate the current group for saving (e.g., group 1-10, 11-20)
+            group = (epoch - 1) // 10 + 1
+            group_dir = os.path.join(self.img_dir, f'group_{group * 10 - 9}-{group * 10}')
+            util.mkdirs(group_dir)  # Ensure the directory exists
+
+            # Save the image to the corresponding directory
+            img_path = os.path.join(group_dir, f'epoch{epoch:03d}_image1.png')
+            util.save_image(image_numpy, img_path)
               
     def accumulate_loss(self, epoch, losses):
         """Accumulate the losses for the given epoch."""
