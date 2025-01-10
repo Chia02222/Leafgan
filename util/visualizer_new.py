@@ -110,7 +110,7 @@ class Visualizer():
             self.saved = True
     
             # 保存特定图片的变化
-            target_img_path = os.path.join(self.web_dir, 'training_images')
+            target_image_path = os.path.join(self.web_dir, 'training_images')
             if self.target_image_path:  # 如果设置了目标图片路径
                 target_name = ntpath.basename(self.target_image_path)
                 for label, image in visuals.items():
