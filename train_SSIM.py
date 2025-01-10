@@ -10,6 +10,13 @@ from models import create_model, Interpolation
 from util.visualizer_new import Visualizer
 from pytorch_msssim import ssim
 
+def interpolate(z1, z2, num_steps=10):
+    interpolated = []
+    for alpha in torch.linspace(0, 1, num_steps):
+        z_interp = (1 - alpha) * z1 + alpha * z2
+        interpolated.append(z_interp)
+    return interpolated
+
 def calculate_ssim(real_images, reconstructed_images):
     device = real_images.device
     real_images = real_images.to(device)
@@ -162,34 +169,6 @@ if __name__ == '__main__':
                 if psnr_B > best_psnr_B:
                     best_psnr_B = psnr_B
                     
-            # 增加插值计算部分，定期插值并计算插值损失
-            if total_iters % opt.interpolation_freq == 0:  # 每隔一定步数执行插值
-                # 获取健康和疾病的潜在向量
-                real_A = data['A'].to(model.device)
-                real_B = data['B'].to(model.device) 
-                
-                # 随机选择潜在向量进行插值
-                z_health_1, z_health_2 = random_latent_vectors(real_A, model)
-                z_disease_1, z_disease_2 = random_latent_vectors(real_B, model)
-    
-                # 执行健康到疾病和疾病到健康的插值
-                health_to_disease_images = interpolate_latent_space(model, z_health_1, z_disease_1)
-                disease_to_health_images = interpolate_latent_space(model, z_disease_1, z_health_1)
-    
-                # 计算插值损失
-                health_to_disease_loss = interpolation_loss_fn(health_to_disease_images, real_B)
-                disease_to_health_loss = interpolation_loss_fn(disease_to_health_images, real_A)
-    
-                # 总损失 = 标准损失 + 插值损失
-                total_loss = model.compute_loss(data) + health_to_disease_loss + disease_to_health_loss
-            else:
-                # 计算标准损失
-                total_loss = model.compute_loss(data)
-    
-            # 进行反向传播并优化模型
-            total_loss.backward()
-            optimizer.step()
-
             if total_iters % opt.display_freq == 0:
                 save_result = total_iters % opt.update_html_freq == 0
                 model.compute_visuals()
@@ -203,9 +182,14 @@ if __name__ == '__main__':
                     visualizer.plot_current_losses(epoch, float(epoch_iter) / dataset_size, losses)
 
             if total_iters % opt.save_latest_freq == 0:
+                z1, z2 = model.get_random_latent_vectors()  # 从模型中获取两个随机潜在向量
+                interpolated_images = interpolate(z1, z2, num_steps=10)  # 插值生成图像
+                # 通过插值结果生成图像并展示
+                visualizer.display_interpolated_results(interpolated_images, epoch)
                 print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
                 save_suffix = f'iter_{total_iters}' if opt.save_by_iter else 'latest'
                 model.save_networks(save_suffix)
+                
 
             iter_data_time = time.time()
             
