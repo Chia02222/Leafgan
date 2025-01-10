@@ -6,7 +6,7 @@ import os
 import csv
 from options.train_options import TrainOptions
 from data import create_dataset
-from models import create_model, Interpolation
+from models import create_model
 import util.visualizer
 from pytorch_msssim import ssim
 
