@@ -109,30 +109,26 @@ class LeafGANModel(BaseModel):
 			self.optimizers.append(self.optimizer_G)
 			self.optimizers.append(self.optimizer_D)
 
-	def get_yolo_mask(self, image):
-    
-    		# Resize the input image to reduce memory usage
-    		image_resized = cv2.resize(image, (640, 640))  # Resize to a smaller size (e.g., 640x640)
-    
-    		results = self.yolov5_model.predict(image_resized)  # Run YOLOv5 prediction
-    		masks = results.masks  # Extract masks if available
+	# Get the binary mask of the "full leaf" area
+	def get_masking(self, tensor, threshold):
+		with torch.enable_grad():
+			probs, idx = self.netLFLSeg.forward(tensor)
+			self.netLFLSeg.backward(idx=0) # 0 for getting heatmap for "fully_leaf" class
 
-    		if masks is None or len(masks) == 0:
-        		raise ValueError("No masks detected by YOLOv5")
+		heat_map = self.netLFLSeg.generate(target_layer='layer4.2') # 'layer4.2' is the best for our experiment
+		heat_map = cv2.resize(heat_map, dsize=(self.opt.crop_size, self.opt.crop_size))
 
-    		# Assuming single object detection, resize mask to reduce memory usage
-    		mask = masks[0]  # Take the first mask
-    		mask = cv2.resize(mask, (mask.shape[1] // 2, mask.shape[0] // 2), interpolation=cv2.INTER_LINEAR)  # Downscale mask
-    		mask = mask.astype(np.float32) / 255.0  # Normalize mask to [0, 1]
-    
-    		# Convert to PyTorch tensor with half precision (FP16) to save memory
-    		foreground_mask = torch.from_numpy(mask).unsqueeze(0).unsqueeze(0).to(self.device, dtype=torch.float16, non_blocking=True)
-    		background_mask = 1.0 - foreground_mask
+		background_mask = np.absolute(1.0-(heat_map>=threshold))
+		background_mask = np.stack((background_mask, background_mask, background_mask), axis=2)
 
-    		# Clear intermediate variables to free memory
-    		del mask, masks, results
-    		torch.cuda.empty_cache()
-		return foreground_mask, background_mask
+		foreground_mask =  heat_map>=threshold
+		foreground_mask = np.stack((foreground_mask, foreground_mask, foreground_mask), axis=2)
+
+		# from numpy image: H x W x C to torch image: C x H x W
+		background_mask = background_mask.astype(np.float32).transpose(2,0,1)
+		foreground_mask = foreground_mask.astype(np.float32).transpose(2,0,1)
+
+		return torch.from_numpy(background_mask).unsqueeze(0).to(self.device), torch.from_numpy(foreground_mask).unsqueeze(0).to(self.device)
 
 	def to_numpy(self, tensor):
 		img = tensor.data
@@ -178,6 +174,10 @@ class LeafGANModel(BaseModel):
 	    		if not self.is_using_mask:
 	    			self.background_real_A, self.foreground_real_A = self.get_masking(self.real_A, self.opt.threshold)
 	    			self.background_real_B, self.foreground_real_B = self.get_masking(self.real_B, self.opt.threshold)
+				self.save_image(self.background_real_A, 'saved_images/masked_background_real_A.png')
+				self.save_image(self.foreground_real_A, 'saved_images/masked_foreground_real_A.png')
+				self.save_image(self.background_real_B, 'saved_images/masked_background_real_B.png')
+				self.save_image(self.foreground_real_B, 'saved_images/masked_foreground_real_B.png')
 	    		self.fake_B = self.netG_A(self.real_A)  # G_A(A)
 	    		self.fore_fake_B = self.foreground_real_A * self.fake_B
 	    		self.back_fake_B = self.background_real_A * self.fake_B
