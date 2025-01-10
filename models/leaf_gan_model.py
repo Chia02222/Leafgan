@@ -132,8 +132,7 @@ class LeafGANModel(BaseModel):
     		# Clear intermediate variables to free memory
     		del mask, masks, results
     		torch.cuda.empty_cache()
-
-   		return foreground_mask, background_mask
+		return foreground_mask, background_mask
 
 	def to_numpy(self, tensor):
 		img = tensor.data
