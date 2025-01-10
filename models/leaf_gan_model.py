@@ -13,8 +13,6 @@ from . import networks
 from .base_model import BaseModel
 from .grad_cam import GradCAM
 
-import os
-os.makedirs('saved_images', exist_ok=True)
 
 class LeafGANModel(BaseModel):
 	"""
@@ -176,10 +174,6 @@ class LeafGANModel(BaseModel):
 	    		if not self.is_using_mask:
 	    			self.background_real_A, self.foreground_real_A = self.get_masking(self.real_A, self.opt.threshold)
 	    			self.background_real_B, self.foreground_real_B = self.get_masking(self.real_B, self.opt.threshold)
-				self.save_image(self.background_real_A, 'saved_images/masked_background_real_A.png')
-				self.save_image(self.foreground_real_A, 'saved_images/masked_foreground_real_A.png')
-				self.save_image(self.background_real_B, 'saved_images/masked_background_real_B.png')
-				self.save_image(self.foreground_real_B, 'saved_images/masked_foreground_real_B.png')
 	    		self.fake_B = self.netG_A(self.real_A)  # G_A(A)
 	    		self.fore_fake_B = self.foreground_real_A * self.fake_B
 	    		self.back_fake_B = self.background_real_A * self.fake_B
