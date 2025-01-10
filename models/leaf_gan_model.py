@@ -13,6 +13,8 @@ from . import networks
 from .base_model import BaseModel
 from .grad_cam import GradCAM
 
+import os
+os.makedirs('saved_images', exist_ok=True)
 
 class LeafGANModel(BaseModel):
 	"""
