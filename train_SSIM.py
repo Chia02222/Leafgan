@@ -7,7 +7,7 @@ import csv
 from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
-import util.visualizer
+from util.visualizer import Visualizer
 from pytorch_msssim import ssim
 
 def interpolate(z1, z2, num_steps=10):
