@@ -6,7 +6,7 @@ import os
 import csv
 from options.train_options import TrainOptions
 from data import create_dataset
-from models import create_model
+from models import create_model, Interpolation
 from util.visualizer_new import Visualizer
 from pytorch_msssim import ssim
 
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
     checkpoint_dir = 'checkpoints'
     os.makedirs(checkpoint_dir, exist_ok=True)
-
+    interpolation_loss_fn = InterpolationLoss(lambda_interpolation=1.0)
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         epoch_start_time = time.time()
         iter_data_time = time.time()
@@ -161,7 +161,35 @@ if __name__ == '__main__':
                     best_ssim_B = ssim_B
                 if psnr_B > best_psnr_B:
                     best_psnr_B = psnr_B
-
+                    
+            # 增加插值计算部分，定期插值并计算插值损失
+            if total_iters % opt.interpolation_freq == 0:  # 每隔一定步数执行插值
+                # 获取健康和疾病的潜在向量
+                real_A = data['A'].to(model.device)
+                real_B = data['B'].to(model.device) 
+                
+                # 随机选择潜在向量进行插值
+                z_health_1, z_health_2 = random_latent_vectors(real_A, model)
+                z_disease_1, z_disease_2 = random_latent_vectors(real_B, model)
+    
+                # 执行健康到疾病和疾病到健康的插值
+                health_to_disease_images = interpolate_latent_space(model, z_health_1, z_disease_1)
+                disease_to_health_images = interpolate_latent_space(model, z_disease_1, z_health_1)
+    
+                # 计算插值损失
+                health_to_disease_loss = interpolation_loss_fn(health_to_disease_images, real_B)
+                disease_to_health_loss = interpolation_loss_fn(disease_to_health_images, real_A)
+    
+                # 总损失 = 标准损失 + 插值损失
+                total_loss = model.compute_loss(data) + health_to_disease_loss + disease_to_health_loss
+            else:
+                # 计算标准损失
+                total_loss = model.compute_loss(data)
+    
+            # 进行反向传播并优化模型
+            total_loss.backward()
+            optimizer.step()
+=
             if total_iters % opt.display_freq == 0:
                 save_result = total_iters % opt.update_html_freq == 0
                 model.compute_visuals()
