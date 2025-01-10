@@ -147,10 +147,6 @@ if __name__ == '__main__':
                 if psnr_A > best_psnr_A:
                     best_psnr_A = psnr_A
 
-                if total_iters % opt.print_freq == 0:
-                    print(f'SSIM A: {ssim_A}')
-                    print(f'PSNR A: {psnr_A}')
-
             if rec_B_key in visuals:
                 rec_B = visuals[rec_B_key].to(model.device)
 
@@ -165,10 +161,6 @@ if __name__ == '__main__':
                     best_ssim_B = ssim_B
                 if psnr_B > best_psnr_B:
                     best_psnr_B = psnr_B
-
-                if total_iters % opt.print_freq == 0:
-                    print(f'SSIM B: {ssim_B}')
-                    print(f'PSNR B: {psnr_B}')
 
             if total_iters % opt.display_freq == 0:
                 save_result = total_iters % opt.update_html_freq == 0
