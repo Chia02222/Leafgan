@@ -7,7 +7,7 @@ import csv
 from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
-from util.visualizer import Visualizer
+from util.visualizer_new import Visualizer
 from skimage.metrics import structural_similarity as ssim
 
 def calculate_ssim(real_image, reconstructed_image):
