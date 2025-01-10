@@ -11,6 +11,11 @@ if sys.version_info[0] == 2:
 else:
     VisdomExceptionBase = ConnectionError
 
+def save_interpolationimage(self, image, path):
+    # 保存图像到指定路径
+    image = image.cpu().detach().numpy().transpose(1, 2, 0)  # 转换为numpy数组
+    img = Image.fromarray((image * 255).astype(np.uint8))  # 转为PIL图像
+    img.save(path)
 
 def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256):
     """Save images to the disk.
@@ -96,6 +101,10 @@ class Visualizer():
         print('\n\nCould not connect to Visdom server. \n Trying to start a server....')
         print('Command: %s' % cmd)
         Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
+
+    def display_interpolated_results(self, interpolated_images, epoch):
+        for idx, image in enumerate(interpolated_images):
+            self.save_interpolationimage(image, f'./checkpoints/{self.opt.name}/epoch_{epoch}_interpolated_{idx}.png')
 
     def display_current_results(self, visuals, epoch, save_result):
         """Display current results on visdom; save current results to an HTML file.
