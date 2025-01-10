@@ -68,6 +68,7 @@ class Visualizer():
         self.port = opt.display_port
         self.epoch_losses = {}
         self.saved = False
+        self.fixed_images = None
         self.fixed_indices = [0, 5, 10]  # Indices for specific images you want to visualize
         if self.display_id > 0:  # connect to a visdom server given <display_port> and <display_server>
             import visdom
