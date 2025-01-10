@@ -8,7 +8,7 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer_new import Visualizer
-from skimage.metrics import structural_similarity as ssim
+from pytorch_msssim import ssim
 
 def calculate_ssim(real_images, reconstructed_images):
     device = real_images.device
@@ -26,28 +26,32 @@ def calculate_psnr(real_images, reconstructed_images):
     return psnr.item()
 
 def save_metrics_plot(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, epoch_losses, checkpoint_dir):
+    # Calculate the x-axis labels for 5-epoch intervals
+    x_labels = [i * 5 for i in range(len(epoch_ssim_A))]
+    
+    # Plot metrics
     plt.figure()
     plt.subplot(2, 2, 1)
-    plt.plot(range(len(epoch_ssim_A)), epoch_ssim_A, label='Average SSIM A')
-    plt.xlabel('Epoch')
+    plt.plot(x_labels, epoch_ssim_A, label='Average SSIM A')
+    plt.xlabel('Epoch (x5)')
     plt.ylabel('Average SSIM A')
     plt.legend()
 
     plt.subplot(2, 2, 2)
-    plt.plot(range(len(epoch_psnr_A)), epoch_psnr_A, label='Average PSNR A')
-    plt.xlabel('Epoch')
+    plt.plot(x_labels, epoch_psnr_A, label='Average PSNR A')
+    plt.xlabel('Epoch (x5)')
     plt.ylabel('Average PSNR A')
     plt.legend()
 
     plt.subplot(2, 2, 3)
-    plt.plot(range(len(epoch_ssim_B)), epoch_ssim_B, label='Average SSIM B')
-    plt.xlabel('Epoch')
+    plt.plot(x_labels, epoch_ssim_B, label='Average SSIM B')
+    plt.xlabel('Epoch (x5)')
     plt.ylabel('Average SSIM B')
     plt.legend()
 
     plt.subplot(2, 2, 4)
-    plt.plot(range(len(epoch_psnr_B)), epoch_psnr_B, label='Average PSNR B')
-    plt.xlabel('Epoch')
+    plt.plot(x_labels, epoch_psnr_B, label='Average PSNR B')
+    plt.xlabel('Epoch (x5)')
     plt.ylabel('Average PSNR B')
     plt.legend()
 
@@ -57,8 +61,8 @@ def save_metrics_plot(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, ep
 
     # Plot epoch losses
     plt.figure()
-    plt.plot(range(len(epoch_losses)), epoch_losses, label='Epoch Losses')
-    plt.xlabel('Epoch')
+    plt.plot(x_labels, epoch_losses, label='Epoch Losses')
+    plt.xlabel('Epoch (x5)')
     plt.ylabel('Loss')
     plt.legend()
     plt.tight_layout()
@@ -111,11 +115,6 @@ if __name__ == '__main__':
         epoch_start_time = time.time()
         iter_data_time = time.time()
         epoch_iter = 0
-
-        ssim_list_A = []
-        psnr_list_A = []
-        ssim_list_B = []
-        psnr_list_B = []
 
         for i, data in enumerate(dataset):
             iter_start_time = time.time()
@@ -189,7 +188,7 @@ if __name__ == '__main__':
                 model.save_networks(save_suffix)
 
             iter_data_time = time.time()
-
+            
         if epoch % opt.save_epoch_freq == 0:
             print(f'Saving the model at the end of epoch {epoch}, iters {total_iters}')
             model.save_networks('latest')
@@ -200,11 +199,13 @@ if __name__ == '__main__':
             avg_psnr_A = np.mean(psnr_list_A)
             avg_ssim_B = np.mean(ssim_list_B)
             avg_psnr_B = np.mean(psnr_list_B)
-            avg_loss = np.mean([losses[k] for k in losses])  # Calculate average loss
+
+            
             epoch_ssim_A.append(avg_ssim_A)
             epoch_psnr_A.append(avg_psnr_A)
             epoch_ssim_B.append(avg_ssim_B)
             epoch_psnr_B.append(avg_psnr_B)
+            avg_loss = np.mean([losses[k] for k in losses])  # Calculate average loss
             epoch_losses.append(avg_loss)
 
             # Store final metrics
@@ -217,9 +218,11 @@ if __name__ == '__main__':
             print(f'Epoch: {epoch}, Average SSIM B: {avg_ssim_B:.4f}, Average PSNR B: {avg_psnr_B:.4f}')
 
         print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
+        model.update_learning_rate()
 
     save_metrics_plot(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, epoch_losses, opt.checkpoints_dir)
     save_metrics_csv(epoch_ssim_A, epoch_psnr_A, epoch_ssim_B, epoch_psnr_B, epoch_losses, opt.checkpoints_dir)
+    visualizer.save_log_to_excel("my_training_log.xlsx")
 
     # Save best and final metrics
     with open(os.path.join(opt.checkpoints_dir, 'best_and_final_metrics.txt'), 'w') as f:
@@ -227,5 +230,4 @@ if __name__ == '__main__':
         f.write(f'Best SSIM B: {best_ssim_B:.4f}, Best PSNR B: {best_psnr_B:.4f}\n')
         f.write(f'Final SSIM A: {final_ssim_A:.4f}, Final PSNR A: {final_psnr_A:.4f}\n')
         f.write(f'Final SSIM B: {final_ssim_B:.4f}, Final PSNR B: {final_psnr_B:.4f}\n')
-
-    model.update_learning_rate()
+    
