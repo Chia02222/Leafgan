@@ -22,8 +22,7 @@ def interpolate_latent_space(model, z1, z2, num_steps=10):
         generated_image = model.decode(z_interpolated)  # Decode to generate image
         interpolated_images.append(generated_image)
     return interpolated_images
-
-# 定期插值并计算损失
+    
 def compute_loss(model, data, interpolator):
     # 获取健康和疾病图像
     health_image = data['health']
@@ -48,7 +47,6 @@ def compute_loss(model, data, interpolator):
     total_loss = standard_loss + health_to_disease_loss + disease_to_health_loss
     return total_loss
 
-# 定期计算插值损失并反馈给模型
 total_loss = compute_loss(model, data, interpolator)
 total_loss.backward()
 optimizer.step()
