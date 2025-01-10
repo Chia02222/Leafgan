@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
     checkpoint_dir = 'checkpoints'
     os.makedirs(checkpoint_dir, exist_ok=True)
-    interpolation_loss_fn = InterpolationLoss(lambda_interpolation=1.0)
+    
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         epoch_start_time = time.time()
         iter_data_time = time.time()
