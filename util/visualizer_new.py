@@ -110,8 +110,8 @@ class Visualizer():
             self.saved = True
     
             # 保存特定图片的变化
-            if self.target_image_path:  # 如果设置了目标图片路径
-                target_name = ntpath.basename(self.target_image_path)
+            if self.image_path:  # 如果设置了目标图片路径
+                target_name = ntpath.basename(self.image_path)
                 for label, image in visuals.items():
                     if label in target_name:  # 匹配目标图片的标签
                         image_numpy = util.tensor2im(image)
