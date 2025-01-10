@@ -182,10 +182,6 @@ if __name__ == '__main__':
                     visualizer.plot_current_losses(epoch, float(epoch_iter) / dataset_size, losses)
 
             if total_iters % opt.save_latest_freq == 0:
-                z1, z2 = model.get_random_latent_vectors()  # 从模型中获取两个随机潜在向量
-                interpolated_images = interpolate(z1, z2, num_steps=10)  # 插值生成图像
-                # 通过插值结果生成图像并展示
-                visualizer.display_interpolated_results(interpolated_images, epoch)
                 print(f'Saving the latest model (epoch {epoch}, total_iters {total_iters})')
                 save_suffix = f'iter_{total_iters}' if opt.save_by_iter else 'latest'
                 model.save_networks(save_suffix)
@@ -220,6 +216,9 @@ if __name__ == '__main__':
 
             print(f'Epoch: {epoch}, Average SSIM A: {avg_ssim_A:.4f}, Average PSNR A: {avg_psnr_A:.4f}')
             print(f'Epoch: {epoch}, Average SSIM B: {avg_ssim_B:.4f}, Average PSNR B: {avg_psnr_B:.4f}')
+            z1, z2 = model.get_random_latent_vectors()  
+            interpolated_images = interpolate(z1, z2, num_steps=10)  
+            visualizer.display_interpolated_results(interpolated_images, epoch)
 
         print(f'End of epoch {epoch} / {opt.niter + opt.niter_decay} \t Time Taken: {time.time() - epoch_start_time:.2f} sec')
         model.update_learning_rate()
