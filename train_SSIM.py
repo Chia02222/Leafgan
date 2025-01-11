@@ -10,6 +10,10 @@ from models import create_model
 from util.visualizer import Visualizer
 from pytorch_msssim import ssim
 
+latent_dim = 100  # 根据你的模型定义潜在空间的维度
+batch_size = 1  # 生成一个样本
+z_random = torch.randn(batch_size, latent_dim).cuda()  # 随机潜在向量
+
 def interpolate(z1, z2, num_steps=10):
     interpolated = []
     for alpha in torch.linspace(0, 1, num_steps):
