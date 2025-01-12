@@ -42,6 +42,20 @@ class BaseModel(ABC):
         self.optimizers = []
         self.image_paths = []
         self.metric = 0  # used for learning rate policy 'plateau'
+        self.input_nc = opt.input_nc
+        self.output_nc = opt.output_nc
+        self.ngf = opt.ngf
+        self.ndf = opt.ndf
+        self.lambda_A = opt.lambda_A
+        self.lambda_B = opt.lambda_B
+        self.lambda_identity = opt.lambda_identity
+        self.lr = opt.lr
+        self.beta1 = opt.beta1
+        self.pool_size = opt.pool_size
+        self.batch_size = opt.batch_size
+        self.gpu_ids = opt.gpu_ids
+        self.lr_policy = opt.lr_policy
+        self.lr_decay_iters = opt.lr_decay_iters
 
     @staticmethod
     def modify_commandline_options(parser, is_train):
