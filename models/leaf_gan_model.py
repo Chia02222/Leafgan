@@ -108,7 +108,8 @@ class LeafGANModel(BaseModel):
 			self.optimizer_D = torch.optim.Adam(itertools.chain(self.netD_A.parameters(), self.netD_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
 			self.optimizers.append(self.optimizer_G)
 			self.optimizers.append(self.optimizer_D)
-			
+
+	# Pytorch to Numpy（Standard image format）
 	def to_numpy(self, tensor):
 		img = tensor.data
 		image_numpy = img[0].cpu().float().numpy()
