@@ -1,9 +1,9 @@
 Dataset 
-1. Bean (Healthy, Leafspot, Rust)
-2. Strawberry (Healthy, Leafspot)
-3. Coffee (Healthy, Rust)
-taken from Kaggle
+1. Bean (Healthy, Leafspot, Rust)    https://www.kaggle.com/datasets/therealoise/bean-disease-dataset
+2. Strawberry (Healthy, Leafspot) https://www.kaggle.com/c/plant-pathology-2020-fgvc7/data?select=images, https://www.kaggle.com/datasets/nirmalsankalana/plant-diseases-training-dataset?select=data
+3. Coffee (Healthy, Rust)  https://www.kaggle.com/datasets/nirmalsankalana/rocole-a-robusta-coffee-leaf-images-dataset
 
+Segmented Dataset
 https://drive.google.com/drive/folders/1wKFDDZOx-tbPDjsfV8Y9Txnqql6hGb6L?usp=sharing
 
 
