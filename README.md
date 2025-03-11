@@ -1,5 +1,10 @@
 Dataset 
+1. Bean (Healthy, Leafspot, Rust)
+2. Strawberry (Healthy, Leafspot)
+3. Coffee (Healthy, Rust)
+taken from Kaggle
 https://drive.google.com/drive/folders/1wKFDDZOx-tbPDjsfV8Y9Txnqql6hGb6L?usp=sharing
+
 
 
 
