@@ -21,6 +21,7 @@ class TransformWithMask:
         )
         self.crop_size = opt.crop_size
         self.load_size = opt.load_size
+        self.brightness_range = (0.9, 1.1)  # ±10% brightness
 
     def random_crop(self, img, mask):
         x = random.randint(0, np.maximum(0, self.load_size - self.crop_size))
@@ -33,6 +34,11 @@ class TransformWithMask:
         if self.grayscale is not None:
             img = self.grayscale(img)
             mask = self.grayscale(mask)
+
+        # 🟡 Brightness applied only to the image, not the mask
+        brightness_factor = random.uniform(*self.brightness_range)
+        img = adjust_brightness(img, brightness_factor)
+        
         img = self.to_tensor(self.resize(img))
         img = self.normalize(img)
         mask = self.to_tensor(self.resize(mask))
