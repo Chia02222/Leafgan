@@ -7,6 +7,7 @@ from PIL import Image
 
 from data.base_dataset import BaseDataset
 from data.image_folder import make_dataset
+from torchvision.transforms.functional import adjust_brightness
 
 
 class TransformWithMask:
