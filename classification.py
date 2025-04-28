@@ -1,30 +1,50 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+import optuna
+from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms, models
-import os
+from sklearn.model_selection import KFold
+from sklearn.metrics import confusion_matrix, classification_report, precision_recall_fscore_support
+import seaborn as sns
+import matplotlib.pyplot as plt
 from PIL import Image
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, classification_report
-import seaborn as sns
+import pandas as pd
+from torchvision.models import resnet101, ResNet101_Weights
+
+# Create result directory
+result_dir = "classification_results"
+os.makedirs(result_dir, exist_ok=True)
+
+def save_classification_report(report, filename):
+    with open(filename, "w") as f:
+        f.write(report)
 
 class DiseaseDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir, phase='train', transform=None):
         self.root_dir = root_dir
-        self.transform = transform
-        
-        healthy_dir = os.path.join(root_dir, 'healthy')
-        disease_dir = os.path.join(root_dir, 'disease')
-        
-        self.healthy_images = [os.path.join(healthy_dir, img) 
-                                for img in os.listdir(healthy_dir) 
+        self.phase = phase
+        self.transform = transform if transform else transforms.Compose([
+            transforms.Resize((320, 320)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        phase_dir = os.path.join(root_dir, phase)
+        healthy_dir = os.path.join(phase_dir, 'healthy')
+        disease_dir = os.path.join(phase_dir, 'leafspot')
+
+        self.healthy_images = [os.path.join(healthy_dir, img)
+                                for img in os.listdir(healthy_dir)
                                 if img.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
-        self.disease_images = [os.path.join(disease_dir, img) 
-                                for img in os.listdir(disease_dir) 
+        self.disease_images = [os.path.join(disease_dir, img)
+                                for img in os.listdir(disease_dir)
                                 if img.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
-        
+
         self.images = self.healthy_images + self.disease_images
         self.labels = [0] * len(self.healthy_images) + [1] * len(self.disease_images)
 
@@ -41,156 +61,169 @@ class DiseaseDataset(Dataset):
 
         return image, label
 
-def get_resnet101_model(num_classes=2):
-    model = models.resnet101(pretrained=True)
-    
+def get_resnet101_model(num_classes=2, dropout_rate=0.5):
+    model = resnet101(weights=ResNet101_Weights.DEFAULT)
     for param in model.parameters():
         param.requires_grad = False
-    
+
     num_features = model.fc.in_features
     model.fc = nn.Sequential(
         nn.Linear(num_features, 512),
         nn.ReLU(),
-        nn.Dropout(0.5),
+        nn.Dropout(dropout_rate),
         nn.Linear(512, num_classes)
     )
-    
     return model
 
-def plot_confusion_matrix(y_true, y_pred, classes):
-    """
-    Plot confusion matrix using seaborn
-    """
-    cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                xticklabels=classes, 
-                yticklabels=classes)
-    plt.title('Confusion Matrix')
-    plt.xlabel('Predicted Label')
-    plt.ylabel('True Label')
-    plt.tight_layout()
-    plt.savefig('confusion_matrix.png')
-    plt.close()
+def objective(trial):
+    learning_rate = trial.suggest_loguniform('lr', 1e-5, 1e-2)
+    dropout_rate = trial.suggest_uniform('dropout_rate', 0.2, 0.5)
 
-def evaluate_model(model, dataloader):
-    """
-    Evaluate model and generate confusion matrix
-    """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-    model.eval()
+    dataset = DiseaseDataset(root_dir='HtoL_classfication', phase='train')
+    kfold = KFold(n_splits=5, shuffle=True, random_state=42)
 
-    all_preds = []
-    all_labels = []
+    fold_results = []  
+    all_labels_total = []
+    all_preds_total = []
+    fold_train_accuracies = []
+    fold_train_losses = []
 
-    with torch.no_grad():
-        for inputs, labels in dataloader:
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+    best_trial_acc = 0.0  # Track best validation accuracy across folds
+    best_model_state = None  # To store model state
 
-            outputs = model(inputs)
-            _, preds = torch.max(outputs, 1)
+    for fold, (train_idx, val_idx) in enumerate(kfold.split(dataset)):
+        print(f"\nFold {fold+1}/5")
 
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
+        train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
+        val_sampler = torch.utils.data.SubsetRandomSampler(val_idx)
 
-    # Print classification report
-    print(classification_report(all_labels, all_preds, 
-                                target_names=['Healthy', 'Disease']))
+        train_loader = DataLoader(dataset, batch_size=32, sampler=train_sampler)
+        val_loader = DataLoader(dataset, batch_size=32, sampler=val_sampler)
 
-    # Plot confusion matrix
-    plot_confusion_matrix(all_labels, all_preds, 
-                          classes=['Healthy', 'Disease'])
+        model = get_resnet101_model(dropout_rate=dropout_rate)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.fc.parameters(), lr=learning_rate)
 
-def train_model(model, dataloaders, criterion, optimizer, num_epochs=10):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
 
-    for epoch in range(num_epochs):
-        print(f'Epoch {epoch+1}/{num_epochs}')
-        
-        for phase in ['train', 'val']:
-            if phase == 'train':
-                model.train()
-            else:
-                model.eval()
+        best_val_loss = float('inf')
+        best_val_accuracy = 0.0
+        best_train_loss = float('inf')
+        best_train_accuracy = 0.0
 
-            running_loss = 0.0
-            correct_predictions = 0
-            total_predictions = 0
+        all_labels = []
+        all_preds = []
 
-            with torch.set_grad_enabled(phase == 'train'):
-                for inputs, labels in dataloaders[phase]:
-                    inputs = inputs.to(device)
-                    labels = labels.to(device)
+        for epoch in range(1):  
+            model.train()
+            running_train_loss = 0.0
+            running_train_correct = 0
+            total_train = 0
 
-                    optimizer.zero_grad()
+            for inputs, labels in train_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
 
+                running_train_loss += loss.item()
+                running_train_correct += (outputs.argmax(1) == labels).sum().item()
+                total_train += labels.size(0)
+
+            avg_train_loss = running_train_loss / len(train_loader)
+            train_accuracy = running_train_correct / total_train * 100
+
+            best_train_loss = min(best_train_loss, avg_train_loss)
+            best_train_accuracy = max(best_train_accuracy, train_accuracy)
+
+            model.eval()
+            running_val_loss = 0.0
+            running_val_correct = 0
+            total_val = 0
+
+            with torch.no_grad():
+                for inputs, labels in val_loader:
+                    inputs, labels = inputs.to(device), labels.to(device)
                     outputs = model(inputs)
                     loss = criterion(outputs, labels)
+                    running_val_loss += loss.item()
+                    running_val_correct += (outputs.argmax(1) == labels).sum().item()
+                    total_val += labels.size(0)
 
-                    if phase == 'train':
-                        loss.backward()
-                        optimizer.step()
+                    _, preds = torch.max(outputs, 1)
+                    all_labels.extend(labels.cpu().numpy())
+                    all_preds.extend(preds.cpu().numpy())
 
-                    _, predicted = torch.max(outputs.data, 1)
-                    total_predictions += labels.size(0)
-                    correct_predictions += (predicted == labels).sum().item()
+            avg_val_loss = running_val_loss / len(val_loader)
+            val_accuracy = running_val_correct / total_val * 100
 
-                    running_loss += loss.item() * inputs.size(0)
+            print(f'Epoch {epoch+1}: Train Acc: {train_accuracy:.4f}%, Val Acc: {val_accuracy:.4f}%')
 
-            epoch_loss = running_loss / len(dataloaders[phase].dataset)
-            epoch_acc = 100 * correct_predictions / total_predictions
-            
-            print(f'{phase} Loss: {epoch_loss:.4f} Accuracy: {epoch_acc:.2f}%')
+            if val_accuracy > best_val_accuracy:
+                best_val_accuracy = val_accuracy
+                best_val_loss = avg_val_loss
+                best_model_state = model.state_dict()  # Save best model state
 
-    return model
+            trial.report(avg_val_loss, epoch)
+            if trial.should_prune():
+                raise optuna.exceptions.TrialPruned()
+
+        all_labels_total.extend(all_labels)
+        all_preds_total.extend(all_preds)
+        
+        precision, recall, f1, _ = precision_recall_fscore_support(all_labels, all_preds, average='macro')
+        fold_results.append({'Fold': fold+1, 'Val_Loss': best_val_loss, 'Val_Accuracy': best_val_accuracy,
+            'Precision': precision,
+            'Recall': recall,
+            'F1_Score': f1
+        })
+        fold_train_losses.append(best_train_loss)
+        fold_train_accuracies.append(best_train_accuracy)
+
+    trial_number = trial.number
+
+    results_df = pd.DataFrame(fold_results)
+    results_csv_path = os.path.join(result_dir, f'5_fold_results_trial_{trial_number}.csv')
+    results_df.to_csv(results_csv_path, index=False)
+
+    report = classification_report(all_labels_total, all_preds_total, target_names=['Healthy', 'Leafspot'])
+    report_path = os.path.join(result_dir, f'classification_report_trial_{trial_number}.txt')
+    save_classification_report(report, report_path)
+
+    mean_loss = results_df["Val_Loss"].mean()
+    mean_acc = results_df["Val_Accuracy"].mean()
+    mean_train_loss = np.mean(fold_train_losses)
+    mean_train_acc = np.mean(fold_train_accuracies)
+
+    print(f"\n5-Fold Cross-Validation Results for Trial {trial_number}:\nMean Training Accuracy: {mean_train_acc:.4f}%\nMean Validation Accuracy: {mean_acc:.4f}%")
+
+    # Save best model checkpoint if highest validation accuracy
+    best_model_path = os.path.join(result_dir, f"best_model_trial_{trial_number}.pth")
+    torch.save(best_model_state, best_model_path)
+
+    return mean_loss
 
 def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-    # Data transformations
-    data_transforms = {
-        'train': transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(10),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ]),
-        'val': transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
-    }
+    study = optuna.create_study(direction='minimize')
+    study.optimize(objective, n_trials=10)
 
-    # Create datasets
-    image_datasets = {
-        'train': DiseaseDataset(root_dir='train', transform=data_transforms['train']),
-        'val': DiseaseDataset(root_dir='test', transform=data_transforms['val'])
-    }
+    print("Best hyperparameters:", study.best_params)
 
-    # Create dataloaders
-    dataloaders = {
-        'train': DataLoader(image_datasets['train'], batch_size=32, shuffle=True, num_workers=2),
-        'val': DataLoader(image_datasets['val'], batch_size=32, shuffle=False, num_workers=2)
-    }
+    best_trial_number = study.best_trial.number
+    best_model_path = os.path.join(result_dir, f"best_model_trial_{best_trial_number}.pth")
 
-    # Initialize model, loss, and optimizer
-    model = get_resnet101_model()
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.fc.parameters(), lr=0.001)
+    # Ensure the best model is clearly identified
+    final_model_path = os.path.join(result_dir, "best_overall_model.pth")
+    if os.path.exists(best_model_path):
+        os.rename(best_model_path, final_model_path)
+        print(f"Best overall model saved as: {final_model_path}")
 
-    # Train the model
-    trained_model = train_model(model, dataloaders, criterion, optimizer)
-
-    # Evaluate and plot confusion matrix
-    evaluate_model(trained_model, dataloaders['val'])
-
-    # Save the model
-    torch.save(trained_model.state_dict(), 'resnet101_disease_classifier.pth')
+    with open(os.path.join(result_dir, "best_hyperparameters.txt"), "w") as f:
+        f.write(str(study.best_params))
 
 if __name__ == "__main__":
     main()
+
