@@ -115,7 +115,7 @@ def objective(trial):
         all_labels = []
         all_preds = []
 
-        for epoch in range(1):  
+        for epoch in range(10):  
             model.train()
             running_train_loss = 0.0
             running_train_correct = 0
