@@ -79,7 +79,7 @@ def objective(trial):
     learning_rate = trial.suggest_loguniform('lr', 1e-5, 1e-2)
     dropout_rate = trial.suggest_uniform('dropout_rate', 0.2, 0.5)
 
-    dataset = DiseaseDataset(root_dir='HtoL_classfication', phase='train')
+    dataset = DiseaseDataset(root_dir='/content/drive/MyDrive/HtoALS/HtoALS', phase='train')
     kfold = KFold(n_splits=5, shuffle=True, random_state=42)
 
     fold_results = []  
