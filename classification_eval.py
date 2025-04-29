@@ -1,0 +1,205 @@
+import os
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
+from torchvision import transforms, models
+from sklearn.model_selection import KFold
+from sklearn.metrics import classification_report, precision_recall_fscore_support
+import pandas as pd
+from PIL import Image
+import numpy as np
+from torchvision.models import resnet101, ResNet101_Weights
+
+# Fixed hyperparameters
+FIXED_LR = 0.009442267010985238
+FIXED_DROPOUT = 0.3272811043955377
+
+# Create result directory
+result_dir = "classification_results"
+os.makedirs(result_dir, exist_ok=True)
+
+def save_classification_report(report, filename):
+    with open(filename, "w") as f:
+        f.write(report)
+
+class DiseaseDataset(Dataset):
+    def __init__(self, root_dir, phase='train', transform=None):
+        self.root_dir = root_dir
+        self.phase = phase
+        self.transform = transform if transform else transforms.Compose([
+            transforms.Resize((320, 320)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        phase_dir = os.path.join(root_dir, phase)
+        healthy_dir = os.path.join(phase_dir, 'healthy')
+        disease_dir = os.path.join(phase_dir, 'leafspot')
+
+        self.healthy_images = [os.path.join(healthy_dir, img)
+                                for img in os.listdir(healthy_dir)
+                                if img.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
+        self.disease_images = [os.path.join(disease_dir, img)
+                                for img in os.listdir(disease_dir)
+                                if img.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
+
+        self.images = self.healthy_images + self.disease_images
+        self.labels = [0] * len(self.healthy_images) + [1] * len(self.disease_images)
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        img_path = self.images[idx]
+        image = Image.open(img_path).convert('RGB')
+        label = self.labels[idx]
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
+
+def get_resnet101_model(num_classes=2, dropout_rate=0.5):
+    model = resnet101(weights=ResNet101_Weights.DEFAULT)
+    for param in model.parameters():
+        param.requires_grad = False
+
+    num_features = model.fc.in_features
+    model.fc = nn.Sequential(
+        nn.Linear(num_features, 512),
+        nn.ReLU(),
+        nn.Dropout(dropout_rate),
+        nn.Linear(512, num_classes)
+    )
+    return model
+
+def run_kfold_evaluation(lr, dropout_rate):
+    dataset = DiseaseDataset(root_dir='/content/drive/MyDrive/HtoALS/HtoALS', phase='train')
+    kfold = KFold(n_splits=5, shuffle=True, random_state=42)
+
+    all_labels_total = []
+    all_preds_total = []
+    fold_results = []
+    fold_train_losses = []
+    fold_train_accuracies = []
+
+    best_model_state = None
+    best_val_accuracy = 0.0
+
+    for fold, (train_idx, val_idx) in enumerate(kfold.split(dataset)):
+        print(f"\nFold {fold+1}/5")
+
+        train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
+        val_sampler = torch.utils.data.SubsetRandomSampler(val_idx)
+
+        train_loader = DataLoader(dataset, batch_size=32, sampler=train_sampler)
+        val_loader = DataLoader(dataset, batch_size=32, sampler=val_sampler)
+
+        model = get_resnet101_model(dropout_rate=dropout_rate)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.fc.parameters(), lr=lr)
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
+
+        best_fold_val_accuracy = 0.0
+        best_fold_val_loss = float("inf")
+        best_fold_train_accuracy = 0.0
+        best_fold_train_loss = float("inf")
+
+        all_labels = []
+        all_preds = []
+
+        for epoch in range(10):
+            model.train()
+            running_train_loss = 0.0
+            running_train_correct = 0
+            total_train = 0
+
+            for inputs, labels in train_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+
+                running_train_loss += loss.item()
+                running_train_correct += (outputs.argmax(1) == labels).sum().item()
+                total_train += labels.size(0)
+
+            avg_train_loss = running_train_loss / len(train_loader)
+            train_accuracy = running_train_correct / total_train * 100
+
+            best_fold_train_loss = min(best_fold_train_loss, avg_train_loss)
+            best_fold_train_accuracy = max(best_fold_train_accuracy, train_accuracy)
+
+            model.eval()
+            running_val_loss = 0.0
+            running_val_correct = 0
+            total_val = 0
+
+            with torch.no_grad():
+                for inputs, labels in val_loader:
+                    inputs, labels = inputs.to(device), labels.to(device)
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
+                    running_val_loss += loss.item()
+                    running_val_correct += (outputs.argmax(1) == labels).sum().item()
+                    total_val += labels.size(0)
+
+                    _, preds = torch.max(outputs, 1)
+                    all_labels.extend(labels.cpu().numpy())
+                    all_preds.extend(preds.cpu().numpy())
+
+            avg_val_loss = running_val_loss / len(val_loader)
+            val_accuracy = running_val_correct / total_val * 100
+
+            print(f"Epoch {epoch+1}: Train Acc: {train_accuracy:.2f}%, Val Acc: {val_accuracy:.2f}%")
+
+            if val_accuracy > best_fold_val_accuracy:
+                best_fold_val_accuracy = val_accuracy
+                best_fold_val_loss = avg_val_loss
+                if best_val_accuracy < val_accuracy:
+                    best_model_state = model.state_dict()
+                    best_val_accuracy = val_accuracy
+
+        precision, recall, f1, _ = precision_recall_fscore_support(all_labels, all_preds, average='macro')
+        fold_results.append({
+            'Fold': fold+1,
+            'Val_Loss': best_fold_val_loss,
+            'Val_Accuracy': best_fold_val_accuracy,
+            'Precision': precision,
+            'Recall': recall,
+            'F1_Score': f1
+        })
+
+        fold_train_losses.append(best_fold_train_loss)
+        fold_train_accuracies.append(best_fold_train_accuracy)
+
+        all_labels_total.extend(all_labels)
+        all_preds_total.extend(all_preds)
+
+    # Save results
+    results_df = pd.DataFrame(fold_results)
+    results_df.to_csv(os.path.join(result_dir, '5_fold_results_fixed_hyperparams.csv'), index=False)
+
+    report = classification_report(all_labels_total, all_preds_total, target_names=['Healthy', 'Leafspot'])
+    save_classification_report(report, os.path.join(result_dir, 'classification_report_fixed_hyperparams.txt'))
+
+    print("\nAverage Validation Accuracy: {:.2f}%".format(results_df["Val_Accuracy"].mean()))
+    print("Average Training Accuracy: {:.2f}%".format(np.mean(fold_train_accuracies)))
+
+    # Save best model
+    best_model_path = os.path.join(result_dir, "best_fixed_model.pth")
+    torch.save(best_model_state, best_model_path)
+    print(f"Best model saved to: {best_model_path}")
+
+def main():
+    run_kfold_evaluation(FIXED_LR, FIXED_DROPOUT)
+
+if __name__ == "__main__":
+    main()
