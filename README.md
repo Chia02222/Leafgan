@@ -11,25 +11,24 @@ https://drive.google.com/drive/folders/1wKFDDZOx-tbPDjsfV8Y9Txnqql6hGb6L?usp=sha
 
 # Augmentation Strategies for Plant Disease Classification
 
-![Teaser image](media/Teaser.png)
-
-
 Abstract: *This study explores the effectiveness of various data augmentation strategies for enhancing plant disease classification using the LeafGAN model. We propose a novel approach that integrates leaf region and disease symptom masking to improve the quality of synthetic images and, consequently, the performance of plant disease models. Three different configurations of the LeafGAN model were tested, with each model applying distinct masking techniques: Model 1 uses basic LeafGAN outputs, Model 2 applies leaf region masking to isolate the leaf from the background, and Model 3 combines both leaf region and disease symptom masking for enhanced disease simulation. The models were evaluated based on their ability to generate realistic disease progression and recovery images, which were then used for data augmentation. Results show that Model 3, incorporating both masking strategies, produced the most realistic and high-fidelity images, leading to superior augmentation quality. These findings highlight the potential of advanced data augmentation strategies in improving plant disease simulation, emphasizing the importance of targeted feature masking in enhancing the generalization and robustness of disease classification models in agricultural applications.*
 
-
-![Teaser image](media/Teaser_result.png)
-## New Features
-
-- Jul 25, 2021: Added a new option to load the mask images from disk. Running the LFLSeg module during training is quite slow. Instead, we can generate the masks of all training images beforehand and load it during training. Refer to [prepare_mask.py](https://github.com/IyatomiLab/LeafGAN/blob/master/prepare_mask.py) of how to generate mask images from the pre-trained LFLSeg, and the [unaligned_masked_dataset.py](https://github.com/IyatomiLab/LeafGAN/blob/master/data/unaligned_masked_dataset.py) of how to load the mask images. See below of how to train with this new feature.
 
 ## LFLSeg module
 Tutorial of how to create dataset and train the LFLSeg module is available in the [LFLSeg](https://github.com/IyatomiLab/LeafGAN/tree/master/LFLSeg)
 
-![LFLSeg_result](media/LFLSeg_infer.png)
+## YOLOv5 model
+Tutorial of how to train the YOLOv5 model and get the segmentation result. [YOLOv5](https://github.com/ultralytics/yolov5)
 
 ## Datasets
-- Normal dataset: A normal dataset will have 4 directories for two domains A (trainA, testA) and B (trainB, testB). Each directory must contain only images (no other file types).
-An example of the dataset named `healthy2brownspot`
+- original dataset:
+    - Bean Leaf  [Healthy](https://www.kaggle.com/datasets/therealoise/bean-disease-dataset)
+                 [Angular Leaf Spot](https://www.kaggle.com/datasets/therealoise/bean-disease-dataset)
+    - Strawberry Leaf [Healthy](https://universe.roboflow.com/university-of-cordilleras/strawberryleafdisease-no-other/browse?queryText=class%3ALeafSpot&pageSize=50&startingIndex=0&browseQuery=true)
+                      [Angular Leaf Spot](https://www.kaggle.com/datasets/caozhihao/strawberry-disease-data)
+- Segmented dataset:
+- Diseased symptoms annotate though [Robotflow](https://app.roboflow.com/yolov5plantdoc/disease-region/browse?queryText=&pageSize=50&startingIndex=0&browseQuery=true)
+
 ```bash
 /path/to/healthy2brownspot/trainA
 /path/to/healthy2brownspot/testA
@@ -38,12 +37,12 @@ An example of the dataset named `healthy2brownspot`
 ```
 - Masked dataset: This dataset is normal dataset + pre-generated mask images. First, you need to generate your own mask images using the [prepare_mask.py](https://github.com/IyatomiLab/LeafGAN/blob/master/prepare_mask.py). An example of the masked dataset named `healthy2brownspot_mask`
 ```bash
-/path/to/healthy2brownspot/trainA
-/path/to/healthy2brownspot/trainA_mask # mask images of trainA
-/path/to/healthy2brownspot/testA
-/path/to/healthy2brownspot/trainB
-/path/to/healthy2brownspot/trainB_mask # mask images of trainB
-/path/to/healthy2brownspot/testB
+/path/to/healthy2ALS/trainA
+/path/to/healthy2ALS/trainA_mask # mask images of trainA
+/path/to/healthy2ALS/testA
+/path/to/healthy2ALS/trainB
+/path/to/healthy2ALS/trainB_mask # mask images of trainB
+/path/to/healthy2ALS/testB
 ```
 ## LeafGAN/CycleGAN train/test
 - Make sure to prepare the dataset first
