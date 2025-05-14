@@ -9,7 +9,7 @@ Tutorial of how to create dataset and train the LFLSeg module is available in th
 
 ## YOLOv5 model
 Tutorial of how to train the YOLOv5 model and get the segmentation result. [YOLOv5](https://github.com/ultralytics/yolov5)
-Leaf region masking using the [segmentation](https://github.com/ultralytics/yolov5?tab=readme-ov-file#%EF%B8%8F-segmentation) to train the dataset, disease symptoms using the normal detection [training code](https://github.com/ultralytics/yolov5?tab=readme-ov-file#-documentation).
+Leaf region masking using the [segmentation](https://github.com/ultralytics/yolov5?tab=readme-ov-file#%EF%B8%8F-segmentation) to train the dataset, disease symptoms using the [detection](https://github.com/ultralytics/yolov5?tab=readme-ov-file#-documentation).
 ```bash
 /path/to/healthy2ALS/trainA      # A means the healthy dataset
 /path/to/healthy2ALS/trainA_mask # mask images of trainA
