@@ -1,3 +1,4 @@
+# the original code provided from LeafGAN to get the mask though LFLSeg
 import argparse
 from pathlib import Path
 
