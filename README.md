@@ -22,9 +22,9 @@ Tutorial of how to train the YOLOv5 model and get the segmentation result. [YOLO
 
 ## Datasets
 - original dataset:
-    - Bean Leaf  [Healthy](https://www.kaggle.com/datasets/therealoise/bean-disease-dataset)
+    - Bean Leaf  [Healthy](https://www.kaggle.com/datasets/therealoise/bean-disease-dataset) ,
                  [Angular Leaf Spot](https://www.kaggle.com/datasets/therealoise/bean-disease-dataset)
-    - Strawberry Leaf [Healthy](https://universe.roboflow.com/university-of-cordilleras/strawberryleafdisease-no-other/browse?queryText=class%3ALeafSpot&pageSize=50&startingIndex=0&browseQuery=true)
+    - Strawberry Leaf [Healthy](https://universe.roboflow.com/university-of-cordilleras/strawberryleafdisease-no-other/browse?queryText=class%3ALeafSpot&pageSize=50&startingIndex=0&browseQuery=true) , 
                       [Angular Leaf Spot](https://www.kaggle.com/datasets/caozhihao/strawberry-disease-data)
 - Segmented dataset:
 - Diseased symptoms annotate though [Robotflow](https://app.roboflow.com/yolov5plantdoc/disease-region/browse?queryText=&pageSize=50&startingIndex=0&browseQuery=true)
