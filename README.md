@@ -25,7 +25,8 @@ Leaf region masking using the [segmentation](https://github.com/ultralytics/yolo
     - Strawberry Leaf [Healthy](https://universe.roboflow.com/university-of-cordilleras/strawberryleafdisease-no-other/browse?queryText=class%3ALeafSpot&pageSize=50&startingIndex=0&browseQuery=true) , 
                       [Angular Leaf Spot](https://www.kaggle.com/datasets/caozhihao/strawberry-disease-data)
 - Diseased symptoms annotate though [Robotflow](https://app.roboflow.com/yolov5plantdoc/disease-region/browse?queryText=&pageSize=50&startingIndex=0&browseQuery=true)
-- Segmented + Masked dataset: [Click Here](https://drive.google.com/drive/folders/1wKFDDZOx-tbPDjsfV8Y9Txnqql6hGb6L?usp=drive_link) First, train the YOLOv5 model to get the label.txt then run the [maskingtxt.py] to get the segmented and masked leaf region dataset. To get the disease symptoms dataset run [masking_boundingbox.py] to get the segmented and masked disease symptom dataset.
+- Segmented + Masked dataset: [Click Here](https://drive.google.com/drive/folders/1wKFDDZOx-tbPDjsfV8Y9Txnqql6hGb6L?usp=drive_link)
+  First, train the YOLOv5 model to get the label.txt then run the [maskingtxt.py] to get the segmented and masked leaf region dataset. To get the disease symptoms dataset run [masking_boundingbox.py] to get the segmented and masked disease symptom dataset.
 
 
 ## LeafGAN train
