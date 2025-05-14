@@ -19,59 +19,42 @@ Tutorial of how to create dataset and train the LFLSeg module is available in th
 
 ## YOLOv5 model
 Tutorial of how to train the YOLOv5 model and get the segmentation result. [YOLOv5](https://github.com/ultralytics/yolov5)
-
+Leaf region masking using the [segmentation](https://github.com/ultralytics/yolov5?tab=readme-ov-file#%EF%B8%8F-segmentation) to train the dataset, disease symptoms using the normal detection [training code](https://github.com/ultralytics/yolov5?tab=readme-ov-file#-documentation).
+```bash
+/path/to/healthy2ALS/trainA      # A means the healthy dataset
+/path/to/healthy2ALS/trainA_mask # mask images of trainA
+/path/to/healthy2ALS/testA
+/path/to/healthy2ALS/trainB      # B means the diseased dataset
+/path/to/healthy2ALS/trainB_mask # mask images of trainB
+/path/to/healthy2ALS/testB
+```
 ## Datasets
 - original dataset:
     - Bean Leaf  [Healthy](https://www.kaggle.com/datasets/therealoise/bean-disease-dataset) ,
                  [Angular Leaf Spot](https://www.kaggle.com/datasets/therealoise/bean-disease-dataset)
     - Strawberry Leaf [Healthy](https://universe.roboflow.com/university-of-cordilleras/strawberryleafdisease-no-other/browse?queryText=class%3ALeafSpot&pageSize=50&startingIndex=0&browseQuery=true) , 
                       [Angular Leaf Spot](https://www.kaggle.com/datasets/caozhihao/strawberry-disease-data)
-- Segmented dataset:
 - Diseased symptoms annotate though [Robotflow](https://app.roboflow.com/yolov5plantdoc/disease-region/browse?queryText=&pageSize=50&startingIndex=0&browseQuery=true)
+- Segmented + Masked dataset: [Click Here](https://drive.google.com/drive/folders/1wKFDDZOx-tbPDjsfV8Y9Txnqql6hGb6L?usp=drive_link) First, train the YOLOv5 model to get the label.txt then run the [maskingtxt.py] to get the segmented and masked leaf region dataset. To get the disease symptoms dataset run [masking_boundingbox.py] to get the segmented and masked disease symptom dataset.
 
-```bash
-/path/to/healthy2brownspot/trainA
-/path/to/healthy2brownspot/testA
-/path/to/healthy2brownspot/trainB
-/path/to/healthy2brownspot/testB
-```
-- Masked dataset: This dataset is normal dataset + pre-generated mask images. First, you need to generate your own mask images using the [prepare_mask.py](https://github.com/IyatomiLab/LeafGAN/blob/master/prepare_mask.py). An example of the masked dataset named `healthy2brownspot_mask`
-```bash
-/path/to/healthy2ALS/trainA
-/path/to/healthy2ALS/trainA_mask # mask images of trainA
-/path/to/healthy2ALS/testA
-/path/to/healthy2ALS/trainB
-/path/to/healthy2ALS/trainB_mask # mask images of trainB
-/path/to/healthy2ALS/testB
-```
-## LeafGAN/CycleGAN train/test
+
+## LeafGAN train
 - Make sure to prepare the dataset first
-- Train a model (example with the dataset `healthy2brownspot`):
+- Train a model (example with the dataset `healthy2ALS`):
 ```bash
-python train.py --dataroot /path/to/healthy2brownspot --name healthy2brownspot_leafGAN --model leaf_gan
+python train.py --dataroot /path/to/healthy2ALS --name healthy2ALS_leafGAN(any name you want) --model leaf_gan 
 ```
-- Train model with mask images (example with the dataset `healthy2brownspot_mask`):
+- Train model with mask images (example with the dataset `healthy2ALS_mask`):
 ```bash
-python train.py --dataroot /path/to/healthy2brownspot --name healthy2brownspot_leafGAN --model leaf_gan --dataset_mode unaligned_masked
+python train.py --dataroot /path/to/healthy2ALS --name healthy2ALS_leafGAN --model leaf_gan --dataset_mode unaligned_masked
 ```
-To see more intermediate results, check out `./checkpoints/healthy2brownspot_leafGAN/web/index.html`.
+To see more intermediate results, check out `./checkpoints/healthy2ALS_leafGAN/web/index.html`.
 - Test the model:
 ```bash
-python test.py --dataroot /path/to/healthy2brownspot --name healthy2brownspot_leafGAN --model leaf_gan
+python test.py --dataroot /path/to/healthy2ALS --name healthy2ALS_leafGAN --model leaf_gan
 ```
-- The test results will be saved to a html file here: `./results/healthy2brownspot_leafGAN/latest_test/index.html`.
-
-## Citation
-
-```
-@article{cap2020leafgan,
-  title   = {LeafGAN: An Effective Data Augmentation Method for Practical Plant Disease Diagnosis},
-  author  = {Quan Huu Cap and Hiroyuki Uga and Satoshi Kagiwada and Hitoshi Iyatomi},
-  journal = {IEEE Transactions on Automation Science and Engineering},
-  year    = {2020},
-  doi     = {10.1109/TASE.2020.3041499}
-}
-```
+- The test results will be saved to a html file here: `./results/healthy2ALS_leafGAN/latest_test/index.html`.
 
 ## Acknowledgments
 Our code is inspired by [pytorch-CycleGAN](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix).
+Our code is inspired by [LeafGAN](https://github.com/IyatomiLab/LeafGAN)
