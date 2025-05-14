@@ -46,5 +46,4 @@ python test.py --dataroot /path/to/healthy2ALS --name healthy2ALS_leafGAN --mode
 - The test results will be saved to a html file here: `./results/healthy2ALS_leafGAN/latest_test/index.html`.
 
 ## Acknowledgments
-Our code is inspired by [pytorch-CycleGAN](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix).
-Our code is inspired by [LeafGAN](https://github.com/IyatomiLab/LeafGAN)
+Our code is inspired by [pytorch-CycleGAN](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix) and [LeafGAN](https://github.com/IyatomiLab/LeafGAN)
