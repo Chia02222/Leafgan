@@ -9,7 +9,7 @@ https://drive.google.com/drive/folders/1wKFDDZOx-tbPDjsfV8Y9Txnqql6hGb6L?usp=sha
 
 
 
-## Augmentation Strategies for Plant Disease Classification
+# Augmentation Strategies for Plant Disease Classification
 
 ![Teaser image](media/Teaser.png)
 
