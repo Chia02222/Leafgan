@@ -20,12 +20,15 @@ Tutorial of how to create dataset and train the LFLSeg module is available in th
 Tutorial of how to train the YOLOv5 model and get the segmentation result. [YOLOv5](https://github.com/ultralytics/yolov5)
 Leaf region masking using the [segmentation](https://github.com/ultralytics/yolov5?tab=readme-ov-file#%EF%B8%8F-segmentation) to train the dataset, disease symptoms using the [detection](https://github.com/ultralytics/yolov5?tab=readme-ov-file#-documentation).
 ```bash
-/path/to/healthy2ALS/trainA      # A means the healthy dataset
-/path/to/healthy2ALS/trainA_mask # mask images of trainA
-/path/to/healthy2ALS/testA
-/path/to/healthy2ALS/trainB      # B means the diseased dataset
-/path/to/healthy2ALS/trainB_mask # mask images of trainB
-/path/to/healthy2ALS/testB
+Dataset Folder Structure:
+healthy2ALS/
+├── trainA/          # Healthy images
+├── trainA_mask/     # Masked healthy images
+├── trainB/          # Diseased images
+├── trainB_mask/     # Masked diseased images
+├── testA/
+├── testB/
+
 ```
 
 ## LeafGAN train
