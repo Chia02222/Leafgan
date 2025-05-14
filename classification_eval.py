@@ -13,7 +13,7 @@ from PIL import Image
 import numpy as np
 from torchvision.models import resnet101, ResNet101_Weights
 
-# Fixed hyperparameters
+# Fixed hyperparameters (the  best hyperparameter found though optuna)
 FIXED_LR = 0.009442267010985238
 FIXED_DROPOUT = 0.3272811043955377
 
