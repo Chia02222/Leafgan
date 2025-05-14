@@ -1,13 +1,3 @@
-Dataset 
-1. Bean (Healthy, Angular leaf spot, Rust)    https://www.kaggle.com/datasets/therealoise/bean-disease-dataset
-2. Strawberry (Healthy, Angular leaf spot)  https://www.kaggle.com/datasets/nirmalsankalana/plant-diseases-training-dataset?select=data (healthy), https://www.kaggle.com/datasets/caozhihao/strawberry-disease-data (angular leaf spot)
-3. Coffee (Healthy, Rust)  https://www.kaggle.com/datasets/nirmalsankalana/rocole-a-robusta-coffee-leaf-images-dataset
-
-Segmented Dataset
-https://drive.google.com/drive/folders/1wKFDDZOx-tbPDjsfV8Y9Txnqql6hGb6L?usp=sharing
-
-
-
 
 # Augmentation Strategies for Plant Disease Classification
 
